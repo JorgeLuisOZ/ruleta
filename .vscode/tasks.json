@@ -1,0 +1,13 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Iniciar Ruleta Docker",
+        "type": "shell",
+        "command": ".\\iniciar-ruleta.bat",
+        "group": "build",
+        "problemMatcher": []
+      }
+    ]
+  }
+  

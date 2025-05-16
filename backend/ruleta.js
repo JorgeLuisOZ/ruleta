@@ -1,18 +1,27 @@
-// backend/ruleta.js
-
-const express = require('express');
-const path = require('path');
+const express = require("express");
+const path = require("path");
 
 const app = express();
 const PORT = 3000;
 
-app.use(express.static(path.join(__dirname, '../frontend')));
+// Servir carpeta frontend completa como estática
+app.use(express.static(path.join(__dirname, "frontend")));
 
+// Rutas explícitas para las páginas
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "frontend/login.html"));
+});
+
+app.get("/ruleta.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "frontend/ruleta.html"));
+});
+
+// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🟢 Servidor frontend en http://localhost:${PORT}`);
 });
 
-
+// MQTT y lógica de ruleta queda igual
 const mqtt = require("mqtt");
 const client = mqtt.connect("mqtt://broker-mqtt");
 
@@ -85,7 +94,7 @@ client.on("message", (topic, message) => {
     try {
       const { usuario, texto } = JSON.parse(payload);
       const chat = `${usuario}: ${texto}`;
-      client.publish("ruleta/mensaje", chat);
+      client.publish("ruleta/chat", chat);  // <-- Cambié el topic para evitar rebotes
       console.log(`💬 ${chat}`);
     } catch (e) {
       console.error("❌ Error en mensaje de chat", e);

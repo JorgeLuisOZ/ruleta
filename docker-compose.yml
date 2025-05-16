@@ -5,7 +5,6 @@ services:
     ports:
       - "1883:1883"
       - "9001:9001"
-      - "3000:3000"
     volumes:
       - ./mqtt/mqtt.conf:/mosquitto/config/mosquitto.conf
     restart: unless-stopped
@@ -16,7 +15,7 @@ services:
     container_name: ruleta-backend
     depends_on:
       - mqtt
-    working_dir: /app
-    volumes:
-      - ./backend:/app
+    ports:
+      - "3000:3000"
+    working_dir: /app/backend
     command: node ruleta.js

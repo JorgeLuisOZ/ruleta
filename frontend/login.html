@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login Ruleta Casino</title>
+  <link rel="stylesheet" href="css/login.css" />
+</head>
+<body>
+  <div class="login-container">
+    <h1>
+      <span>R</span><span>U</span><span>L</span><span>E</span><span>T</span><span>A</span><br />
+      <span>C</span><span>A</span><span>S</span><span>I</span><span>N</span><span>O</span>
+    </h1>
+    <label for="usuario">Ingresa tu nombre de jugador</label>
+    <input id="usuario" type="text" placeholder="Ej: Carlos" autocomplete="off" />
+    <button onclick="iniciarSesion()">Ingresar</button>
+  </div>
+
+  <script>
+    function iniciarSesion() {
+      const usuario = document.getElementById('usuario').value.trim();
+      if (!usuario) {
+        alert('Por favor, ingresa tu nombre de jugador.');
+        return;
+      }
+      localStorage.setItem('usuarioRuleta', usuario);
+      window.location.href = 'ruleta.html';
+    }
+
+    // Permitir presionar Enter para enviar
+    document.getElementById('usuario').addEventListener('keydown', e => {
+      if (e.key === 'Enter') iniciarSesion();
+    });
+  </script>
+</body>
+</html>

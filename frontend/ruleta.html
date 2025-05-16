@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ruleta Multijugador</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input, button { margin: 5px; font-size: 16px; }
+    #chat, #estado, #confirmaciones, #resultado { margin-top: 15px; }
+    #mensajes { border: 1px solid #aaa; padding: 10px; height: 120px; overflow-y: scroll; }
+    #usuario { width: 200px; }
+  </style>
+</head>
+<body>
+
+  <h1>🎰 Ruleta Multijugador</h1>
+
+  <label>Nombre de jugador:</label>
+  <input type="text" id="usuario" readonly><br>
+
+  <label>Tu número (0–36):</label>
+  <input type="number" id="numero" min="0" max="36" />
+  <button onclick="apostar()">Apostar</button>
+
+  <div id="confirmaciones"></div>
+  <div id="estado"></div>
+  <div id="resultado"></div>
+
+  <hr />
+
+  <h3>💬 Chat</h3>
+  <input type="text" id="mensaje" />
+  <button onclick="enviarMensaje()">Enviar</button>
+  <div id="chat">
+    <div id="mensajes"></div>
+  </div>
+
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script src="main.js"></script>
+
+  <script>
+    // Validar que haya usuario guardado, si no redirige a login
+    const usuarioGuardado = localStorage.getItem("usuarioRuleta");
+    if (!usuarioGuardado) {
+      alert("No has iniciado sesión. Serás redirigido al login.");
+      window.location.href = "login.html";
+    } else {
+      // Mostrar usuario en el input y conectar MQTT
+      document.getElementById("usuario").value = usuarioGuardado;
+      iniciarMQTT(usuarioGuardado);
+    }
+  </script>
+
+</body>
+</html>
