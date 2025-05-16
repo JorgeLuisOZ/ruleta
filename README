@@ -1,0 +1,82 @@
+# 🎰 Ruleta Multijugador con MQTT y Docker
+
+Este proyecto implementa una ruleta multijugador en tiempo real usando MQTT como sistema de comunicación, Node.js como backend y Docker para contenerizar tanto el broker MQTT como la lógica del juego.
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+ruleta-mqtt/
+├── backend/
+│   ├── ruleta.js
+│   └── package.json
+├── frontend/
+│   ├── index.html
+│   └── main.js
+├── mqtt/
+│   └── mqtt.conf
+├── Dockerfile
+├── docker-compose.yml
+└── README.md
+```
+
+---
+
+## 🚀 ¿Qué hace este proyecto?
+
+* Permite que múltiples jugadores se conecten a una "mesa de ruleta".
+* Cada jugador elige un número del 0 al 36 y lo publica vía MQTT.
+* Cada 15 segundos, el backend genera un número ganador al azar y lo publica.
+* Los jugadores reciben el número y saben si ganaron o no.
+* También incluye:
+
+  * Confirmación de apuestas
+  * Estado de la ruleta en tiempo real
+  * Chat entre jugadores
+  * Resultados personalizados por jugador
+
+---
+
+## 🛠️ Cómo ejecutar
+
+1. Clona el repositorio o descarga los archivos.
+2. Abre una terminal y ve al directorio raíz del proyecto.
+
+```bash
+docker-compose up --build
+```
+
+3. Abre el archivo frontend/index.html directamente en tu navegador.
+
+⚠️ Importante: si quieres servir el frontend desde Express, se debe ajustar el Dockerfile.
+
+---
+
+## 📡 Topics MQTT utilizados
+
+| Topic                      | Dirección          | Descripción                                 |
+| -------------------------- | ------------------ | ------------------------------------------- |
+| ruleta/apuestas            | Cliente → Broker   | Envío de número elegido                     |
+| ruleta/confirmacion        | Servidor → Cliente | Confirma recepción de apuesta               |
+| ruleta/estado              | Servidor → Todos   | Estado del juego (esperando, girando, etc.) |
+| ruleta/ganador             | Servidor → Todos   | Número ganador global                       |
+| ruleta/resultado/{usuario} | Servidor → Cliente | Resultado individual                        |
+| ruleta/mensaje             | Todos ↔ Todos      | Chat entre jugadores                        |
+| ruleta/jugadores           | Cliente → Broker   | Registro de jugadores conectados            |
+
+---
+
+## 📦 Notas Docker
+
+* El backend usa Node.js con mqtt.js para manejar suscripciones y publicaciones.
+* El broker MQTT es rrojano/mqtt, que incluye soporte para WebSocket (puerto 9001).
+
+---
+
+## ✍️ Autor
+
+Angel Alexander
+Fernando
+Jorge Luis
+Axel Alain

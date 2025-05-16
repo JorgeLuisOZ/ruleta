@@ -1,0 +1,22 @@
+services:
+  mqtt:
+    image: rrojano/mqtt
+    container_name: broker-mqtt
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+      - "3000:3000"
+    volumes:
+      - ./mqtt/mqtt.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped
+
+  ruleta:
+    build:
+      context: .
+    container_name: ruleta-backend
+    depends_on:
+      - mqtt
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    command: node ruleta.js
