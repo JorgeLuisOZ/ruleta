@@ -2,54 +2,102 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Ruleta Multijugador</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    input, button { margin: 5px; font-size: 16px; }
-    #chat, #estado, #confirmaciones, #resultado { margin-top: 15px; }
-    #mensajes { border: 1px solid #aaa; padding: 10px; height: 120px; overflow-y: scroll; }
-    #usuario { width: 200px; }
-  </style>
+  <title>Ruleta Casino Realista</title>
+  <link rel="stylesheet" href="css/ruleta.css">
+  <link rel="icon" type="image/x-icon" href="img/ruleta_icon.ico">
 </head>
 <body>
 
-  <h1>🎰 Ruleta Multijugador</h1>
-
-  <label>Nombre de jugador:</label>
-  <input type="text" id="usuario" readonly><br>
-
-  <label>Tu número (0–36):</label>
-  <input type="number" id="numero" min="0" max="36" />
-  <button onclick="apostar()">Apostar</button>
-
-  <div id="confirmaciones"></div>
-  <div id="estado"></div>
-  <div id="resultado"></div>
-
-  <hr />
-
-  <h3>💬 Chat</h3>
-  <input type="text" id="mensaje" />
-  <button onclick="enviarMensaje()">Enviar</button>
-  <div id="chat">
-    <div id="mensajes"></div>
+  <!-- 🔝 Barra superior -->
+  <div class="top-bar">
+    <div class="izquierda">
+      <span>💰 Saldo: <span id="saldo">$5,000.00</span></span>
+      <span>🎯 Apuesta total: <span id="apuesta">$0.00</span></span>
+    </div>
+    <div class="derecha">
+      👤 Usuario: <span id="usuario">Alex</span>
+    </div>
   </div>
 
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-  <script src="main.js"></script>
+  <!-- 🎯 Zona central -->
+  <div class="mesa-container">
+    <!-- 🎡 Ruleta -->
+    <div class="ruleta">
+      <div class="ruleta-circulo" id="ruleta">
+        <div class="bola" id="bola"></div>
+      </div>
+    </div>
 
-  <script>
-    // Validar que haya usuario guardado, si no redirige a login
-    const usuarioGuardado = localStorage.getItem("usuarioRuleta");
-    if (!usuarioGuardado) {
-      alert("No has iniciado sesión. Serás redirigido al login.");
-      window.location.href = "login.html";
-    } else {
-      // Mostrar usuario en el input y conectar MQTT
-      document.getElementById("usuario").value = usuarioGuardado;
-      iniciarMQTT(usuarioGuardado);
-    }
-  </script>
+    <!-- 📋 Mesa de apuestas -->
+    <div class="tabla-apuestas">
+      <div class="columna-cero">
+        <div class="celda verde largo">0</div>
+      </div>
+      <div class="numeros">
+        <div class="fila">
+          <div class="celda rojo">3</div><div class="celda negro">6</div><div class="celda rojo">9</div>
+          <div class="celda negro">12</div><div class="celda rojo">15</div><div class="celda negro">18</div>
+          <div class="celda rojo">21</div><div class="celda negro">24</div><div class="celda rojo">27</div>
+          <div class="celda negro">30</div><div class="celda rojo">33</div><div class="celda negro">36</div>
+          <div class="celda apuesta">2to1</div>
+        </div>
+        <div class="fila">
+          <div class="celda negro">2</div><div class="celda rojo">5</div><div class="celda negro">8</div>
+          <div class="celda rojo">11</div><div class="celda negro">14</div><div class="celda rojo">17</div>
+          <div class="celda negro">20</div><div class="celda rojo">23</div><div class="celda negro">26</div>
+          <div class="celda rojo">29</div><div class="celda negro">32</div><div class="celda rojo">35</div>
+          <div class="celda apuesta">2to1</div>
+        </div>
+        <div class="fila">
+          <div class="celda rojo">1</div><div class="celda negro">4</div><div class="celda rojo">7</div>
+          <div class="celda negro">10</div><div class="celda rojo">13</div><div class="celda negro">16</div>
+          <div class="celda rojo">19</div><div class="celda negro">22</div><div class="celda rojo">25</div>
+          <div class="celda negro">28</div><div class="celda rojo">31</div><div class="celda negro">34</div>
+          <div class="celda apuesta">2to1</div>
+        </div>
+        <div class="fila">
+          <div class="celda apuesta doble">1–18</div>
+          <div class="celda apuesta doble">Par</div>
+          <div class="celda apuesta doble rojo"></div>
+          <div class="celda apuesta doble negro"></div>
+          <div class="celda apuesta doble">Impar</div>
+          <div class="celda apuesta doble">19–36</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔻 Zona inferior -->
+  <div class="bottom-bar">
+    <div class="fichas">
+      <div class="ficha ficha1"></div>
+      <div class="ficha ficha5"></div>
+      <div class="ficha ficha20"></div>
+      <div class="ficha ficha50"></div>
+      <div class="ficha ficha100"></div>
+      <div class="ficha ficha500"></div>
+      <div class="ficha ficha1k"></div>
+
+      <!-- 🔁 Nuevos botones -->
+      <div class="botones-control">
+        <button class="boton-control regresar">↩</button>
+        <button class="boton-control doblar">2X</button>
+        <button class="boton-control repetir">🔁</button>
+      </div>
+    </div>
+
+    <!-- 💬 Chat -->
+    <div class="chat-box">
+      <h4>💬 Chat en vivo</h4>
+      <div class="mensajes" id="mensajes">
+        <div class="mensaje">[Alex] ¡Vamos con el 17!</div>
+      </div>
+      <div class="chat-input">
+        <input type="text" placeholder="Escribe tu mensaje..." />
+        <button>Enviar</button>
+      </div>
+    </div>
+  </div>
 
 </body>
 </html>
