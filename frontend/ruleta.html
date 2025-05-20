@@ -2,9 +2,9 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Ruleta Casino Realista</title>
+  <title>Ruleta Casino MQTT</title>
   <link rel="stylesheet" href="css/ruleta.css">
-  <link rel="icon" type="image/x-icon" href="img/ruleta_icon.ico">
+  <link rel="icon" type="image/x-icon" href="img/ruleta.ico">
 </head>
 <body>
 
@@ -23,9 +23,9 @@
   <div class="mesa-container">
     <!-- 🎡 Ruleta -->
     <div class="ruleta">
-      <div class="ruleta-circulo" id="ruleta">
-        <div class="bola" id="bola"></div>
-      </div>
+      <div class="ruleta-circulo" id="ruleta"></div>
+      <img src="img/ruleta-centro.png" class="ruleta-centro" alt="Centro ruleta">
+      <div class="bola" id="bola"></div>
     </div>
 
     <!-- 📋 Mesa de apuestas -->
@@ -98,6 +98,9 @@
       </div>
     </div>
   </div>
+
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script src="main.js"></script>
 
 </body>
 </html>

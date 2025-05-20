@@ -93,19 +93,36 @@ client.on("message", (topic, message) => {
 
   } else if (topic === "ruleta/jugadores") {
     try {
-      const usuario = payload.trim();
+      const data = JSON.parse(payload);
+      const usuario = data.usuario?.trim();
+      const origen = data.origen;
 
-      // Solo agregamos si no es ya una lista serializada (evita rebote)
-      if (!usuario.startsWith("[")) {
-        jugadores.add(usuario);
-        client.publish("ruleta/jugadores", JSON.stringify(Array.from(jugadores)));
-        console.log(`👤 Jugador conectado: ${usuario}`);
+      if (!usuario) return;
+
+      const yaExiste = jugadores.has(usuario);
+
+      if (origen === "login") {
+        if (yaExiste) {
+          // 🔴 Rechazar duplicado
+          client.publish(`ruleta/validacion/${usuario}`, JSON.stringify({ valido: false }));
+          console.log(`❌ Rechazo desde login: nombre duplicado 👤${usuario}`);
+          return;
+        } else {
+          jugadores.add(usuario);
+          client.publish(`ruleta/validacion/${usuario}`, JSON.stringify({ valido: true }));
+          console.log(`🟢 Registro desde login: 👤${usuario}`);
+          client.publish("ruleta/jugadores", JSON.stringify(Array.from(jugadores)));
+        }
+      } else if (origen === "ruleta") {
+        // Solo se publica si el jugador ya está en la lista
+        if (yaExiste) {
+          console.log(`🎲 Conexión activa en ruleta: 👤${usuario}`);
+        }
       }
 
     } catch (e) {
       console.error("❌ Error al agregar jugador", e);
     }
-
   } else if (topic === "ruleta/mensaje") {
     try {
       const { usuario, texto } = JSON.parse(payload);

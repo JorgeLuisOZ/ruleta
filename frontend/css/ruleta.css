@@ -39,31 +39,61 @@ body {
 
 /* RULETA */
 .ruleta {
-  width: 400px;
-  height: 400px;
+  width: 500px;
+  height: 500px;
   border-radius: 50%;
-  border: 14px solid #8b5a2b;
-  background: radial-gradient(circle, #d6b370 25%, #000 25.5%);
+  background-image: url("../img/madera-textura.png");
+  background-size: cover;
+  background-position: center;
   box-shadow: 0 0 25px #000;
   position: relative;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: none;
+}
+
+#ruleta {
+  transition: transform 5s ease-out;
+  transform-origin: center center;
+}
+
+
+.ruleta-borde {
+  width: 90%;
+  height: 90%;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.ruleta-centro {
+  width: 60%;
+  height: 60%;
+  object-fit: contain;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
 }
 
 .ruleta-circulo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   width: 100%;
   height: 100%;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: conic-gradient(
-    red 0deg 10deg, black 10deg 20deg, red 20deg 30deg, black 30deg 40deg,
-    red 40deg 50deg, black 50deg 60deg, red 60deg 70deg, black 70deg 80deg,
-    red 80deg 90deg, black 90deg 100deg, red 100deg 110deg, black 110deg 120deg,
-    red 120deg 130deg, black 130deg 140deg, red 140deg 150deg, black 150deg 160deg,
-    red 160deg 170deg, black 170deg 180deg, red 180deg 190deg, black 190deg 200deg,
-    red 200deg 210deg, black 210deg 220deg, red 220deg 230deg, black 230deg 240deg,
-    red 240deg 250deg, black 250deg 260deg, red 260deg 270deg, black 270deg 280deg,
-    red 280deg 290deg, black 290deg 300deg, red 300deg 310deg, black 310deg 320deg,
-    red 320deg 330deg, black 330deg 340deg, green 340deg 360deg
-  );
-  position: relative;
+  z-index: 1;
+
+  background-image: url("../img/ruleta-sectores.png"); /* <-- usa la imagen que creaste */
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .bola {
@@ -75,7 +105,7 @@ body {
   background: white;
   border-radius: 50%;
   transform: translateX(-50%);
-  z-index: 5;
+  z-index: 3;
 }
 
 /* TABLA DE APUESTAS */
@@ -83,6 +113,8 @@ body {
   display: flex;
   padding: 5px;
   background-color: transparent;
+  user-select: none;
+  pointer-events: none;
 }
 
 .columna-cero {

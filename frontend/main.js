@@ -1,4 +1,3 @@
-const usuarioInput = document.getElementById("usuario");
 const numeroInput = document.getElementById("numero");
 const mensajeInput = document.getElementById("mensaje");
 const confirmaciones = document.getElementById("confirmaciones");
@@ -6,23 +5,32 @@ const estado = document.getElementById("estado");
 const resultado = document.getElementById("resultado");
 const mensajesDiv = document.getElementById("mensajes");
 
-let client;            // Cliente MQTT
-let temporizadorID;    // ID del temporizador de cuenta regresiva
+const usuario = localStorage.getItem("usuarioRuleta");
+document.getElementById("usuario").textContent = usuario;
 
-function iniciarMQTT(usuario) {
-  if (client && client.connected) return; // Evitar doble conexión
+let client;
+let temporizadorID;
 
-  client = mqtt.connect("ws://localhost:9001");
+function iniciarMQTT() {
+  if (!usuario) {
+    alert("No se ha definido un usuario. Vuelve al login.");
+    return;
+  }
+
+  if (client && client.connected) return;
+
+  client = mqtt.connect("ws://" + window.location.hostname + ":9001");
 
   client.on("connect", () => {
-    console.log("✅ Conectado al broker MQTT");
+    console.log("✅ Conectado al broker MQTT como", usuario);
 
     client.subscribe("ruleta/estado");
     client.subscribe("ruleta/confirmacion");
     client.subscribe("ruleta/chat");
     client.subscribe(`ruleta/resultado/${usuario}`);
 
-    client.publish("ruleta/jugadores", usuario);
+    client.publish("ruleta/jugadores", JSON.stringify({ usuario, origen: "ruleta" }));
+
   });
 
   client.on("message", (topic, message) => {
@@ -33,36 +41,38 @@ function iniciarMQTT(usuario) {
         const datos = JSON.parse(payload);
 
         if (datos.mensaje === "Ronda activa") {
+          const ruleta = document.getElementById("ruleta");
+          const angulo = 3600 + Math.floor(Math.random() * 1800);
+          ruleta.style.transition = "transform 5s ease-out";
+          ruleta.style.transform = `rotate(${angulo}deg)`;
+
           const tiempoRestante = () => {
             const ahora = Date.now();
             const msRestantes = datos.inicio + datos.duracion - ahora;
             return Math.max(0, Math.floor(msRestantes / 1000));
           };
 
-          clearInterval(temporizadorID); // Limpiamos anteriores
-
+          clearInterval(temporizadorID);
           let segundos = tiempoRestante();
           estado.textContent = `⏳ Estado: Ronda activa - faltan ${segundos}s`;
 
           temporizadorID = setInterval(() => {
             segundos = tiempoRestante();
             estado.textContent = `⏳ Estado: Ronda activa - faltan ${segundos}s`;
-
             if (segundos <= 0) clearInterval(temporizadorID);
           }, 1000);
-
         } else {
           estado.textContent = `📢 Estado: ${datos.mensaje}`;
         }
-
       } catch (e) {
-        // Mensaje simple o antiguo
         estado.textContent = "⏳ Estado: " + payload;
       }
+
     } else if (topic === "ruleta/confirmacion") {
       if (payload.startsWith(usuario)) {
         confirmaciones.textContent = "✅ " + payload;
       }
+
     } else if (topic.startsWith("ruleta/resultado/")) {
       try {
         const datos = JSON.parse(payload);
@@ -78,6 +88,7 @@ function iniciarMQTT(usuario) {
         resultado.textContent = `❌ Error al recibir resultado`;
         console.error("Error al procesar resultado:", e);
       }
+
     } else if (topic === "ruleta/chat") {
       const p = document.createElement("p");
       p.textContent = payload;
@@ -86,26 +97,22 @@ function iniciarMQTT(usuario) {
     }
   });
 
-  // Cuando se cierre la pestaña, desconectamos el cliente
   window.addEventListener("beforeunload", () => {
-    if (client && client.connected) {
-      client.end(); // Cierra la conexión MQTT
-    }
-    clearInterval(temporizadorID); // Limpia temporizador si está activo
+    if (client && client.connected) client.end();
+    clearInterval(temporizadorID);
   });
 }
 
 function apostar() {
-  const nombre = usuarioInput.value.trim();
   const numero = numeroInput.value.trim();
 
-  if (!nombre || numero === "") {
-    alert("Escribe tu nombre y número antes de apostar.");
+  if (!usuario || numero === "") {
+    alert("Escribe tu número antes de apostar.");
     return;
   }
 
   const apuesta = {
-    usuario: nombre,
+    usuario,
     numero: parseInt(numero)
   };
 
@@ -114,8 +121,6 @@ function apostar() {
 
 function enviarMensaje() {
   const texto = mensajeInput.value.trim();
-  const usuario = usuarioInput.value.trim();
-
   if (!texto || !usuario) return;
 
   const msg = {
@@ -126,3 +131,6 @@ function enviarMensaje() {
   client.publish("ruleta/mensaje", JSON.stringify(msg));
   mensajeInput.value = "";
 }
+
+// ✅ Inicializamos automáticamente
+document.addEventListener("DOMContentLoaded", iniciarMQTT);

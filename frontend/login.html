@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>Login Ruleta Casino</title>
   <link rel="stylesheet" href="css/login.css" />
-  <link rel="icon" type="image/x-icon" href="img/ruleta_icon.ico">
+  <link rel="icon" type="image/x-icon" href="img/ruleta.ico">
 </head>
 <body>
   <div class="login-container">
@@ -17,21 +17,7 @@
     <button onclick="iniciarSesion()">Ingresar</button>
   </div>
 
-  <script>
-    function iniciarSesion() {
-      const usuario = document.getElementById('usuario').value.trim();
-      if (!usuario) {
-        alert('Por favor, ingresa tu nombre de jugador.');
-        return;
-      }
-      localStorage.setItem('usuarioRuleta', usuario);
-      window.location.href = 'ruleta.html';
-    }
-
-    // Permitir presionar Enter para enviar
-    document.getElementById('usuario').addEventListener('keydown', e => {
-      if (e.key === 'Enter') iniciarSesion();
-    });
-  </script>
+  <script src="login.js"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </body>
 </html>
