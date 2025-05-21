@@ -6,6 +6,7 @@ const resultado = document.getElementById("resultado");
 const mensajesDiv = document.getElementById("mensajes");
 const apuestaTotalSpan = document.getElementById("apuesta");
 const saldoSpan = document.getElementById("saldo");
+const mensajeSuperior = document.getElementById("mensaje-superior");
 
 const usuario = localStorage.getItem("usuarioRuleta");
 document.getElementById("usuario").textContent = usuario;
@@ -23,6 +24,26 @@ if (isNaN(saldo)) saldo = 5000;
 
 let apuestaTotal = 0;
 let historialApuestas = [];
+
+// Lista de números en el orden que aparecen en la ruleta
+const numerosRuleta = [
+  0, 32, 15, 19, 4, 21, 2, 25, 17, 34,
+  6, 27, 13, 36, 11, 30, 8, 23, 10, 5,
+  24, 16, 33, 1, 20, 14, 31, 9, 22, 18,
+  29, 7, 28, 12, 35, 3, 26
+];
+
+// 1. Definir sectores base con rangos angulares fijos
+const offset = 355; // Ajuste inicio real de la ruleta
+const sectoresBase = [];
+const totalNumeros = numerosRuleta.length;
+const anguloSector = 360 / totalNumeros;
+
+for (let i = 0; i < totalNumeros; i++) {
+  let desde = (offset + i * anguloSector) % 360;
+  let hasta = (offset + (i + 1) * anguloSector) % 360;
+  sectoresBase.push({ numero: numerosRuleta[i], desde, hasta });
+}
 
 function actualizarSaldoUI() {
   saldoSpan.textContent = `$${saldo.toLocaleString()}`;
@@ -70,9 +91,8 @@ function iniciarMQTT() {
           const anguloFinal = Math.floor(Math.random() * 360);
           const angulo = (vueltas * 360) + anguloFinal;
 
-          ruleta.style.transition = "transform 4.5s cubic-bezier(0.33, 1, 0.68, 1)"; // tipo easeOutCirc
+          ruleta.style.transition = "transform 4.5s cubic-bezier(0.33, 1, 0.68, 1)"; // easeOutCirc
           ruleta.style.transform = `rotate(${angulo}deg)`;
-
 
           const tiempoRestante = () => {
             const ahora = Date.now();
@@ -254,6 +274,90 @@ document.addEventListener("DOMContentLoaded", () => {
     anguloOrbita -= anguloBola; // gira en sentido contrario a la ruleta
     orbita.style.transition = "transform 4s cubic-bezier(0.33, 1, 0.68, 1)";
     orbita.style.transform = `rotate(${anguloOrbita}deg)`;
+  });
+
+  // Función para obtener ángulo de rotación desde el transform CSS
+  function obtenerAnguloDeRotacion(elemento) {
+    const estilo = window.getComputedStyle(elemento);
+    const transform = estilo.transform || estilo.webkitTransform;
+
+    if (transform && transform !== "none") {
+      const valores = transform.match(/matrix\(([^)]+)\)/);
+      if (!valores) return 0;
+      const partes = valores[1].split(",");
+      const a = parseFloat(partes[0]);
+      const b = parseFloat(partes[1]);
+      let angulo = Math.round(Math.atan2(b, a) * (180 / Math.PI));
+      if (angulo < 0) angulo += 360;
+      return angulo;
+    }
+    return 0;
+  }
+
+  // Función para ajustar sector con rotación actual de la ruleta
+  function sectorConRotacion(sector, rotacion) {
+    return {
+      numero: sector.numero,
+      desde: (sector.desde + rotacion) % 360,
+      hasta: (sector.hasta + rotacion) % 360
+    };
+  }
+
+  // Función para encontrar número ganador comparando ángulo bola con sectores rotados
+  function encontrarNumeroGanador(anguloBola, sectores, rotacionRuleta) {
+    for (const sector of sectores) {
+      const sectorRot = sectorConRotacion(sector, rotacionRuleta);
+      if (sectorRot.desde > sectorRot.hasta) {
+        // Sector cruza 0 grados
+        if (anguloBola >= sectorRot.desde || anguloBola <= sectorRot.hasta) {
+          return sectorRot.numero;
+        }
+      } else {
+        if (anguloBola >= sectorRot.desde && anguloBola <= sectorRot.hasta) {
+          return sectorRot.numero;
+        }
+      }
+    }
+    return null;
+  }
+
+  // Detectar número ganador al terminar la animación
+  function detectarNumeroGanador() {
+    const ruleta = document.getElementById("ruleta");
+    const orbita = document.getElementById("orbita-bola");
+
+    const anguloRuleta = obtenerAnguloDeRotacion(ruleta);
+    const anguloBola = obtenerAnguloDeRotacion(orbita);
+
+    const numeroGanador = encontrarNumeroGanador(anguloBola, sectoresBase, anguloRuleta);
+
+    console.log('Ángulo ruleta:', anguloRuleta);
+    console.log('Ángulo bola:', anguloBola);
+    console.log('Número ganador:', numeroGanador);
+
+    if (client && client.connected) {
+      client.publish("ruleta/ganador", JSON.stringify({ numeroGanador }));
+    }
+
+    // Mostrar mensaje arriba de la tabla de apuestas
+    mensajeSuperior.textContent = `🎯 Número ganador: ${numeroGanador}`;
+
+    // Opcional: borrar mensaje después de 5 segundos
+    setTimeout(() => {
+      mensajeSuperior.textContent = "";
+    }, 5000);
+  }
+
+  // Escuchar cuando termina la animación de ruleta y bola
+  const ruleta = document.getElementById("ruleta");
+  const orbita = document.getElementById("orbita-bola");
+
+  ruleta.addEventListener("transitionend", () => {
+    detectarNumeroGanador();
+  });
+
+  orbita.addEventListener("transitionend", () => {
+    detectarNumeroGanador();
   });
 
   // Enviar mensaje
