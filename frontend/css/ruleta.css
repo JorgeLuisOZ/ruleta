@@ -53,10 +53,19 @@ body {
 }
 
 #ruleta {
-  transition: transform 5s ease-out;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  background-image: url("../img/ruleta-sectores.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  transform: translate(-50%, -50%) rotate(0deg);
   transform-origin: center center;
+  transition: transform 4s ease-out;
 }
-
 
 .ruleta-borde {
   width: 90%;
@@ -96,16 +105,39 @@ body {
   background-position: center;
 }
 
+.orbita-bola {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  transform-origin: center center;
+  z-index: 4;
+}
+
 .bola {
   position: absolute;
-  top: 15px;
+  top: 0;
   left: 50%;
   width: 18px;
   height: 18px;
   background: white;
   border-radius: 50%;
   transform: translateX(-50%);
-  z-index: 3;
+}
+
+.bola {
+  position: absolute;
+  top: 15px; 
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  background: white;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  transition: transform 4s cubic-bezier(0.33, 1, 0.68, 1);
+  transform-origin: center center;
+  z-index: 4;
 }
 
 /* TABLA DE APUESTAS */
@@ -114,7 +146,6 @@ body {
   padding: 5px;
   background-color: transparent;
   user-select: none;
-  pointer-events: none;
 }
 
 .columna-cero {
@@ -154,6 +185,8 @@ body {
 .celda {
   width: 60px;
   height: 60px;
+  position: relative;
+  z-index: 0;
   text-align: center;
   line-height: 60px;
   font-weight: bold;
@@ -161,6 +194,7 @@ body {
   border: 1px solid white;
   border-radius: 0;
   color: white;
+  cursor: pointer;
 }
 
 .celda.rojo { background: red; }
@@ -214,7 +248,9 @@ body {
   border: 3px solid white;
   box-shadow: 0 0 6px rgba(0,0,0,0.7);
   transition: transform 0.2s ease;
+  cursor: pointer;
 }
+
 .ficha:hover {
   transform: scale(1.05);
 }
@@ -232,6 +268,38 @@ body {
 .ficha100 { background-image: url("../img/ficha100.png"); }
 .ficha500 { background-image: url("../img/ficha500.png"); }
 .ficha1k  { background-image: url("../img/ficha1k.png"); }
+
+.ficha.seleccionada {
+  transform: translateY(-10px) scale(1.1);
+  box-shadow: 0 0 10px 2px gold;
+  transition: all 0.2s ease;
+}
+
+.ficha-apuesta {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) translateY(calc(-4px * var(--ficha-index, 0)));
+  background-color: rgba(255, 215, 0, 0.85);
+  backdrop-filter: blur(1px);
+  color: black;
+  border: 2px solid #222;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 5px #000;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.celda {
+  position: relative; /* importante para posicionar la ficha dentro */
+}
 
 /* Botones de acción */
 .botones-control {
