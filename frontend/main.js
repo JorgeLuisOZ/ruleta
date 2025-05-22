@@ -175,19 +175,6 @@ function iniciarMQTT() {
   });
 }
 
-function enviarMensaje() {
-  const texto = mensajeInput.value.trim();
-  if (!texto || !usuario) return;
-
-  const msg = {
-    usuario,
-    texto
-  };
-
-  client.publish("ruleta/mensaje", JSON.stringify(msg));
-  mensajeInput.value = "";
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   iniciarMQTT();
 
