@@ -12,8 +12,8 @@ function iniciarSesion() {
     return;
   }
 
-  // Guardamos nombre en localStorage para usar en ruleta.html
-  localStorage.setItem("tempUsuarioRuleta", nombre);
+  // Guardamos nombre en sessionStorage para usar en ruleta.html
+  sessionStorage.setItem("tempUsuarioRuleta", nombre);
 
   // Nos suscribimos al canal de validación específico
   const topicRespuesta = `ruleta/validacion/${nombre}`;
@@ -39,14 +39,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   clientMQTT.on("message", (topic, message) => {
-    const actual = localStorage.getItem("tempUsuarioRuleta");
+    const actual = sessionStorage.getItem("tempUsuarioRuleta");
     const expectedTopic = `ruleta/validacion/${actual}`;
 
     if (topic === expectedTopic) {
       try {
         const datos = JSON.parse(message.toString());
         if (datos.valido) {
-          localStorage.setItem("usuarioRuleta", actual);
+          sessionStorage.setItem("usuarioRuleta", actual);
           window.location.href = "ruleta.html";
         } else {
           alert("❌ Ese nombre ya está en uso. Elige otro.");

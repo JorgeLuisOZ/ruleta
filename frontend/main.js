@@ -8,18 +8,20 @@ const apuestaTotalSpan = document.getElementById("apuesta");
 const saldoSpan = document.getElementById("saldo");
 const mensajeSuperior = document.getElementById("mensaje-superior");
 
-const usuario = localStorage.getItem("usuarioRuleta");
+const usuario = sessionStorage.getItem("usuarioRuleta");
 document.getElementById("usuario").textContent = usuario;
 
 let client;
 let temporizadorID;
 let fichaSeleccionada = 0;
 
+let puedeApostar = false;
+
 let anguloAcumulado = 0;
 let anguloOrbita = 0;
 
 const claveSaldo = `saldoRuleta_${usuario}`;
-let saldo = parseInt(localStorage.getItem(claveSaldo));
+let saldo = parseInt(sessionStorage.getItem(claveSaldo));
 if (isNaN(saldo)) saldo = 5000;
 
 let apuestaTotal = 0;
@@ -47,7 +49,7 @@ for (let i = 0; i < totalNumeros; i++) {
 
 function actualizarSaldoUI() {
   saldoSpan.textContent = `$${saldo.toLocaleString()}`;
-  localStorage.setItem(claveSaldo, saldo);
+  sessionStorage.setItem(claveSaldo, saldo);
 }
 
 function actualizarApuestaUI() {
@@ -75,47 +77,67 @@ function iniciarMQTT() {
     client.subscribe("ruleta/chat");
     client.subscribe(`ruleta/resultado/${usuario}`);
 
-    client.publish("ruleta/jugadores", JSON.stringify({ usuario, origen: "ruleta" }));
+    setTimeout(() => {
+      client.publish("ruleta/jugadores", JSON.stringify({ usuario, origen: "ruleta" }));
+    }, 1000); 
   });
 
   client.on("message", (topic, message) => {
     const payload = message.toString();
 
     if (topic === "ruleta/estado") {
+      console.log("📩 Estado recibido:", payload); // para verificar que SÍ llega el mensaje
+
       try {
         const datos = JSON.parse(payload);
+        const ahora = Date.now();
 
-        if (datos.mensaje === "Ronda activa") {
-          const ruleta = document.getElementById("ruleta");
-          const vueltas = 6; // cantidad de vueltas completas
-          const anguloFinal = Math.floor(Math.random() * 360);
-          const angulo = (vueltas * 360) + anguloFinal;
+        // 🔓 Permitir apuestas solo en estos estados
+        if (datos.mensaje === "Ronda activa" && datos.inicio && datos.duracion) {
+          puedeApostar = true;
 
-          ruleta.style.transition = "transform 4.5s cubic-bezier(0.33, 1, 0.68, 1)"; // easeOutCirc
-          ruleta.style.transform = `rotate(${angulo}deg)`;
-
-          const tiempoRestante = () => {
-            const ahora = Date.now();
-            const msRestantes = datos.inicio + datos.duracion - ahora;
-            return Math.max(0, Math.floor(msRestantes / 1000));
-          };
-
+          const msRestantes = datos.inicio + datos.duracion - ahora;
           clearInterval(temporizadorID);
-          let segundos = tiempoRestante();
-          estado.textContent = `⏳ Estado: Ronda activa - faltan ${segundos}s`;
+
+          let segundos = Math.max(1, Math.floor(msRestantes / 1000));
+          mensajeSuperior.textContent = `⏳ Estado: Ronda activa - faltan ${segundos}s`;
 
           temporizadorID = setInterval(() => {
-            segundos = tiempoRestante();
-            estado.textContent = `⏳ Estado: Ronda activa - faltan ${segundos}s`;
+            segundos--;
+            mensajeSuperior.textContent = `⏳ Estado: Ronda activa - faltan ${segundos}s`;
             if (segundos <= 0) clearInterval(temporizadorID);
           }, 1000);
+
+        } else if (datos.mensaje === "Girando") {
+          puedeApostar = false;
+
+          const ruleta = document.getElementById("ruleta");
+          const orbita = document.getElementById("orbita-bola");
+
+          anguloAcumulado += Math.floor((5 + Math.random() * 2) * 360);
+          anguloOrbita -= Math.floor((5 + Math.random() * 2) * 360);
+
+          ruleta.style.transition = "transform 4s ease-out";
+          ruleta.style.transform = `translate(-50%, -50%) rotate(${anguloAcumulado}deg)`;
+
+          orbita.style.transition = "transform 4s ease-out";
+          orbita.style.transform = `rotate(${anguloOrbita}deg)`;
+
+          mensajeSuperior.textContent = "🎰 Girando..."; 
+          
+        } else if (datos.mensaje === "esperando apuestas de los jugadores...") {
+          puedeApostar = true;
+          mensajeSuperior.textContent = `📢 Estado: ${datos.mensaje}`;
         } else {
-          estado.textContent = `📢 Estado: ${datos.mensaje}`;
+          puedeApostar = false;
+          mensajeSuperior.textContent = `📢 Estado: ${datos.mensaje}`;
         }
+
       } catch (e) {
-        estado.textContent = "⏳ Estado: " + payload;
+        console.error("Error en ruleta/estado:", e);
+        mensajeSuperior.textContent = "⏳ Estado: " + payload;
       }
-    } else if (topic === "ruleta/confirmacion") {
+      } else if (topic === "ruleta/confirmacion") {
       if (payload.startsWith(usuario)) {
         confirmaciones.textContent = "✅ " + payload;
       }
@@ -191,6 +213,11 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".celda").forEach(celda => {
     celda.addEventListener("click", () => {
       const texto = celda.textContent.trim();
+      
+      if (!puedeApostar) {
+        alert("⛔ No se puede apostar en este momento.");
+        return;
+      }
 
       if (!fichaSeleccionada || !texto) {
         alert("Selecciona una ficha y una casilla válida.");
@@ -231,6 +258,17 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       historialApuestas.push({ celda, monto: fichaSeleccionada });
+
+      // 🔄 Reforzar recepción del estado reenviando la suscripción
+      client.unsubscribe("ruleta/estado", () => {
+        client.subscribe("ruleta/estado", (err) => {
+          if (err) {
+            console.error("❌ Error al re-suscribirse a ruleta/estado", err);
+          } else {
+            console.log("🔄 Re-suscripción forzada a ruleta/estado");
+          }
+        });
+      });
     });
   });
 
@@ -258,7 +296,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelector(".boton-control.repetir").addEventListener("click", () => {
-    const ruleta = document.getElementById("ruleta");
+    /* const ruleta = document.getElementById("ruleta");
     const vueltas = 5 + Math.random() * 2; // entre 5 y 7 vueltas
     const angulo = vueltas * 360;
     anguloAcumulado += angulo;
@@ -273,9 +311,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     anguloOrbita -= anguloBola; // gira en sentido contrario a la ruleta
     orbita.style.transition = "transform 4s cubic-bezier(0.33, 1, 0.68, 1)";
-    orbita.style.transform = `rotate(${anguloOrbita}deg)`;
+    orbita.style.transform = `rotate(${anguloOrbita}deg)`;*/
   });
-
+  
   // Función para obtener ángulo de rotación desde el transform CSS
   function obtenerAnguloDeRotacion(elemento) {
     const estilo = window.getComputedStyle(elemento);
@@ -321,7 +359,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return null;
   }
 
-  // Detectar número ganador al terminar la animación
   function detectarNumeroGanador() {
     const ruleta = document.getElementById("ruleta");
     const orbita = document.getElementById("orbita-bola");
@@ -335,12 +372,9 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log('Ángulo bola:', anguloBola);
     console.log('Número ganador:', numeroGanador);
 
-    if (client && client.connected) {
-      client.publish("ruleta/ganador", JSON.stringify({ numeroGanador }));
-    }
-
-    // Mostrar mensaje arriba de la tabla de apuestas
+    // ✅ Solo se muestra visualmente el resultado
     mensajeSuperior.textContent = `🎯 Número ganador: ${numeroGanador}`;
+    client.publish("ruleta/numeroGanador", JSON.stringify({ numeroGanador }));
 
     // Opcional: borrar mensaje después de 5 segundos
     setTimeout(() => {

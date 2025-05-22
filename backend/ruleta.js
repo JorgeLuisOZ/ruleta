@@ -5,7 +5,6 @@ const mqtt = require("mqtt");
 const app = express();
 const PORT = 3000;
 
-// Servir carpeta frontend como estática
 app.use(express.static(path.join(__dirname, "frontend")));
 
 app.get("/", (req, res) => {
@@ -21,77 +20,26 @@ app.listen(PORT, () => {
 });
 
 // ============================
-// Conexión MQTT
+// Conexión MQTT para validación de usuarios y reenvío de estado
 // ============================
 
 const client = mqtt.connect("mqtt://broker-mqtt");
 
-let apuestas = [];
 let jugadores = new Set();
-let estado = "esperando";
-let rondaActiva = false;
-let timeoutRonda = null;
+let estadoActual = { mensaje: "esperando jugadores..." }; // valor por defecto
 
 client.on("connect", () => {
-  console.log("✅ Conectado al broker MQTT");
-  client.subscribe("ruleta/apuestas");
+  console.log("✅ Backend conectado al broker MQTT");
   client.subscribe("ruleta/jugadores");
-  client.subscribe("ruleta/mensaje");
 
-  client.publish("ruleta/estado", "esperando jugadores...", { retain: true });
+  // Escuchar cambios de estado publicados por el admin
+  client.subscribe("ruleta/estado");
 });
-
-function iniciarRonda() {
-  if (rondaActiva) return;
-
-  rondaActiva = true;
-  const timestamp = Date.now(); // tiempo actual en ms
-  const estadoRonda = {
-    mensaje: "Ronda activa",
-    inicio: timestamp,
-    duracion: 15000
-  };
-  client.publish("ruleta/estado", JSON.stringify(estadoRonda), { retain: true });
-
-  timeoutRonda = setTimeout(() => {
-    const ganador = Math.floor(Math.random() * 37);
-    console.log(`\n🎯 Número ganador: ${ganador}`);
-    client.publish("ruleta/ganador", ganador.toString());
-
-    apuestas.forEach(({ usuario, numero }) => {
-      const gano = parseInt(numero) === ganador;
-      const mensaje = {
-        usuario,
-        resultado: gano ? "ganaste" : "perdiste",
-        numeroGanador: ganador,
-      };
-      client.publish(`ruleta/resultado/${usuario}`, JSON.stringify(mensaje));
-    });
-
-    // Reset de ronda
-    apuestas = [];
-    rondaActiva = false;
-    client.publish("ruleta/estado", JSON.stringify({ mensaje: "Ronda terminada" }), { retain: true });
-
-  }, 15000);
-}
 
 client.on("message", (topic, message) => {
   const payload = message.toString();
 
-  if (topic === "ruleta/apuestas") {
-    try {
-      const { usuario, numero } = JSON.parse(payload);
-      apuestas = apuestas.filter(a => a.usuario !== usuario);
-      apuestas.push({ usuario, numero });
-      client.publish("ruleta/confirmacion", `${usuario}: apuesta recibida (${numero})`);
-      console.log(`✔️ Apuesta de ${usuario} al ${numero}`);
-      iniciarRonda();
-    } catch (e) {
-      console.error("❌ Apuesta inválida", e);
-    }
-
-  } else if (topic === "ruleta/jugadores") {
+  if (topic === "ruleta/jugadores") {
     try {
       const data = JSON.parse(payload);
       const usuario = data.usuario?.trim();
@@ -103,40 +51,29 @@ client.on("message", (topic, message) => {
 
       if (origen === "login") {
         if (yaExiste) {
-          // 🔴 Rechazar duplicado
           client.publish(`ruleta/validacion/${usuario}`, JSON.stringify({ valido: false }));
-          console.log(`❌ Rechazo desde login: nombre duplicado 👤${usuario}`);
-          return;
+          console.log(`❌ Usuario duplicado rechazado: ${usuario}`);
         } else {
           jugadores.add(usuario);
           client.publish(`ruleta/validacion/${usuario}`, JSON.stringify({ valido: true }));
-          console.log(`🟢 Registro desde login: 👤${usuario}`);
-          client.publish("ruleta/jugadores", JSON.stringify(Array.from(jugadores)));
+          console.log(`🟢 Usuario registrado: ${usuario}`);
         }
       } else if (origen === "ruleta") {
-        // Solo se publica si el jugador ya está en la lista
         if (yaExiste) {
-          console.log(`🎲 Conexión activa en ruleta: 👤${usuario}`);
+          client.publish("ruleta/estado", JSON.stringify(estadoActual));
+          console.log(`🔁 Estado reenviado a ${usuario}`);
         }
       }
-
     } catch (e) {
-      console.error("❌ Error al agregar jugador", e);
+      console.error("❌ Error procesando jugador:", e);
     }
-  } else if (topic === "ruleta/mensaje") {
+  }
+
+  if (topic === "ruleta/estado") {
     try {
-      const { usuario, texto } = JSON.parse(payload);
-      const chat = `${usuario}: ${texto}`;
-      client.publish("ruleta/chat", chat);
-      console.log(`💬 ${chat}`);
+      estadoActual = JSON.parse(payload);
     } catch (e) {
-      console.error("❌ Error en mensaje de chat", e);
-    }
-
-  } else {
-    // Este else evita que se impriman cosas como los ////// infinitos
-    if (!topic.startsWith("ruleta/jugadores")) {
-      console.warn(`⚠️ Mensaje no manejado. Topic: "${topic}", Payload: "${payload}"`);
+      console.error("❌ Error actualizando estado actual:", e);
     }
   }
 });

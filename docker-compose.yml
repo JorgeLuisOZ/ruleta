@@ -19,3 +19,12 @@ services:
       - "3000:3000"
     working_dir: /app/backend
     command: node ruleta.js
+
+  admin:
+    build:
+      context: .
+    container_name: ruleta-admin
+    depends_on:
+      - mqtt
+    working_dir: /app/backend
+    command: node admin.js
