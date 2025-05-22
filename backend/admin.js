@@ -70,7 +70,7 @@ function iniciarRonda() {
 
         // Limpiar el valor guardado
         ultimoNumeroGanador = null;
-        }, 5000);
+        }, 8000);
   }, 15000);
 }
 

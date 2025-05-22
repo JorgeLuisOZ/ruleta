@@ -1,21 +1,23 @@
-FROM node:18
+# Imagen base ligera con Node.js
+FROM node:18-alpine
 
-EXPOSE 3000
-
-WORKDIR /app
-
-# Copiar solo los archivos de dependencias para instalar primero
-COPY backend/package*.json ./backend/
-
+# Establece el directorio de trabajo
 WORKDIR /app/backend
 
-RUN npm install
+# Copia los archivos de dependencias primero
+COPY backend/package*.json ./
 
-# Copiar el resto del código backend
+# Instala las dependencias
+RUN npm install 
+
+# Copia el resto del código backend
 COPY backend/. .
 
-# Copiar el frontend dentro de la carpeta del backend para servirlo
+# Copia el frontend (si lo sirves desde backend)
 COPY frontend ./frontend
 
-# Ejecutar el backend (ruleta.js)
+# Expone el puerto del backend
+EXPOSE 3000
+
+# Comando por defecto: cambia según el servicio (admin o ruleta)
 CMD ["node", "ruleta.js"]

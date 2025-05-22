@@ -74,7 +74,7 @@ function iniciarMQTT() {
 
     client.subscribe("ruleta/estado");
     client.subscribe("ruleta/confirmacion");
-    client.subscribe("ruleta/chat");
+    client.subscribe("ruleta/chat/visible");
     client.subscribe(`ruleta/resultado/${usuario}`);
 
     setTimeout(() => {
@@ -161,7 +161,7 @@ function iniciarMQTT() {
         resultado.textContent = `❌ Error al recibir resultado`;
         console.error("Error al procesar resultado:", e);
       }
-    } else if (topic === "ruleta/chat") {
+    } else if (topic === "ruleta/chat/visible") {
       const p = document.createElement("p");
       p.textContent = payload;
       mensajesDiv.appendChild(p);
@@ -399,4 +399,13 @@ document.addEventListener("DOMContentLoaded", () => {
   mensajeInput.addEventListener("keydown", e => {
     if (e.key === "Enter") enviarMensaje();
   });
+
+  function enviarMensaje() {
+    const texto = mensajeInput.value.trim();
+    if (!texto || !usuario) return;
+
+    client.publish("ruleta/chat", JSON.stringify({ usuario, texto, origen: "cliente" }));
+    mensajeInput.value = "";
+  }
+
 });

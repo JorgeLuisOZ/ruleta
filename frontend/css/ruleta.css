@@ -350,9 +350,8 @@ body {
 }
 
 .mensajes {
-  flex: 1;
   overflow-y: auto;
-  height: 130px; /* o usa min-height para mejor control */
+  height: 60px;
   background: rgba(255,255,255,0.05);
   padding: 8px;
   border-radius: 8px;

@@ -26,11 +26,14 @@ app.listen(PORT, () => {
 const client = mqtt.connect("mqtt://broker-mqtt");
 
 let jugadores = new Set();
-let estadoActual = { mensaje: "esperando jugadores..." }; // valor por defecto
+let estadoActual = { mensaje: "esperando apuestas de los jugadores..." }; // valor por defecto
+let historialChat = []; // 30 mensajes
+
 
 client.on("connect", () => {
   console.log("✅ Backend conectado al broker MQTT");
   client.subscribe("ruleta/jugadores");
+  client.subscribe("ruleta/chat");
 
   // Escuchar cambios de estado publicados por el admin
   client.subscribe("ruleta/estado");
@@ -76,4 +79,24 @@ client.on("message", (topic, message) => {
       console.error("❌ Error actualizando estado actual:", e);
     }
   }
+
+  if (topic === "ruleta/chat") {
+    try {
+      const msg = JSON.parse(payload);
+
+      // Mensaje válido de cliente, lo reenviamos a todos como string plano
+      if (msg.origen === "cliente") {
+        const mensajePlano = `${msg.usuario}: ${msg.texto}`;
+        historialChat.push(mensajePlano);
+        if (historialChat.length > 30) historialChat.shift();
+
+        // 👇 IMPORTANTE: usar un tópico diferente para reenviar
+        client.publish("ruleta/chat/visible", mensajePlano);
+        console.log("💬 Mensaje enviado:", mensajePlano);
+      }
+    } catch (e) {
+      // Si falla el parseo es porque ya es string plano → ignorar
+    }
+  }
+
 });
