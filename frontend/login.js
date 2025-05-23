@@ -7,23 +7,25 @@ function iniciarSesion() {
     return;
   }
 
-  if (!clientMQTT || !clientMQTT.connected) {
+  if (!clientMQTT || !clientMQTT.isConnected()) {
     alert('Conexión MQTT no disponible todavía. Intenta de nuevo.');
     return;
   }
 
-  // Guardamos nombre en sessionStorage para usar en ruleta.html
+  // Guardamos nombre temporalmente
   sessionStorage.setItem("tempUsuarioRuleta", nombre);
 
-  // Nos suscribimos al canal de validación específico
+  // Suscribirse a tópico de validación
   const topicRespuesta = `ruleta/validacion/${nombre}`;
   clientMQTT.subscribe(topicRespuesta);
 
-  // Publicamos solicitud al backend indicando que es desde login
-  clientMQTT.publish("ruleta/jugadores", JSON.stringify({
+  // Enviar solicitud de validación
+  const mensaje = new Paho.MQTT.Message(JSON.stringify({
     usuario: nombre,
     origen: "login"
   }));
+  mensaje.destinationName = "ruleta/jugadores";
+  clientMQTT.send(mensaje);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -32,19 +34,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') iniciarSesion();
   });
 
-  clientMQTT = mqtt.connect("ws://" + window.location.hostname + ":9001");
+  // Crear cliente Paho
+  const clientId = "clienteLogin_" + Math.random().toString(16).substr(2, 8);
+  clientMQTT = new Paho.MQTT.Client(window.location.hostname, 9001, clientId);
 
-  clientMQTT.on("connect", () => {
-    console.log("✅ Conectado al broker desde login");
-  });
+  // Asignar callbacks
+  clientMQTT.onConnectionLost = function (responseObject) {
+    if (responseObject.errorCode !== 0) {
+      console.error("❌ Conexión perdida:", responseObject.errorMessage);
+    }
+  };
 
-  clientMQTT.on("message", (topic, message) => {
+  clientMQTT.onMessageArrived = function (message) {
     const actual = sessionStorage.getItem("tempUsuarioRuleta");
     const expectedTopic = `ruleta/validacion/${actual}`;
 
-    if (topic === expectedTopic) {
+    if (message.destinationName === expectedTopic) {
       try {
-        const datos = JSON.parse(message.toString());
+        const datos = JSON.parse(message.payloadString);
         if (datos.valido) {
           sessionStorage.setItem("usuarioRuleta", actual);
           window.location.href = "ruleta.html";
@@ -55,5 +62,13 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("❌ Error al procesar validación:", e);
       }
     }
+  };
+
+  // Conectar al broker
+  clientMQTT.connect({
+    onSuccess: function () {
+      console.log("✅ Conectado al broker desde login (Paho)");
+    },
+    useSSL: false // true si usas HTTPS y tienes wss://
   });
 });

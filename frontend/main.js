@@ -14,9 +14,7 @@ document.getElementById("usuario").textContent = usuario;
 let client;
 let temporizadorID;
 let fichaSeleccionada = 0;
-
 let puedeApostar = false;
-
 let anguloAcumulado = 0;
 let anguloOrbita = 0;
 
@@ -27,16 +25,12 @@ if (isNaN(saldo)) saldo = 5000;
 let apuestaTotal = 0;
 let historialApuestas = [];
 
-// Lista de números en el orden que aparecen en la ruleta
-const numerosRuleta = [
-  0, 32, 15, 19, 4, 21, 2, 25, 17, 34,
+const numerosRuleta = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34,
   6, 27, 13, 36, 11, 30, 8, 23, 10, 5,
   24, 16, 33, 1, 20, 14, 31, 9, 22, 18,
-  29, 7, 28, 12, 35, 3, 26
-];
+  29, 7, 28, 12, 35, 3, 26];
 
-// 1. Definir sectores base con rangos angulares fijos
-const offset = 355; // Ajuste inicio real de la ruleta
+const offset = 355;
 const sectoresBase = [];
 const totalNumeros = numerosRuleta.length;
 const anguloSector = 360 / totalNumeros;
@@ -65,34 +59,24 @@ function iniciarMQTT() {
   actualizarSaldoUI();
   actualizarApuestaUI();
 
-  if (client && client.connected) return;
+  const clientId = "clienteRuleta_" + Math.random().toString(16).slice(2);
+  client = new Paho.MQTT.Client(window.location.hostname, 9001, clientId);
 
-  client = mqtt.connect("ws://" + window.location.hostname + ":9001");
+  client.onConnectionLost = (responseObject) => {
+    if (responseObject.errorCode !== 0) {
+      console.error("❌ Conexión perdida:", responseObject.errorMessage);
+    }
+  };
 
-  client.on("connect", () => {
-    console.log("✅ Conectado al broker MQTT como", usuario);
-
-    client.subscribe("ruleta/estado");
-    client.subscribe("ruleta/confirmacion");
-    client.subscribe("ruleta/chat/visible");
-    client.subscribe(`ruleta/resultado/${usuario}`);
-
-    setTimeout(() => {
-      client.publish("ruleta/jugadores", JSON.stringify({ usuario, origen: "ruleta" }));
-    }, 1000); 
-  });
-
-  client.on("message", (topic, message) => {
-    const payload = message.toString();
+  client.onMessageArrived = (message) => {
+    const topic = message.destinationName;
+    const payload = message.payloadString;
 
     if (topic === "ruleta/estado") {
-      console.log("📩 Estado recibido:", payload); // para verificar que SÍ llega el mensaje
-
       try {
         const datos = JSON.parse(payload);
         const ahora = Date.now();
 
-        // 🔓 Permitir apuestas solo en estos estados
         if (datos.mensaje === "Ronda activa" && datos.inicio && datos.duracion) {
           puedeApostar = true;
 
@@ -123,24 +107,22 @@ function iniciarMQTT() {
           orbita.style.transition = "transform 4s ease-out";
           orbita.style.transform = `rotate(${anguloOrbita}deg)`;
 
-          mensajeSuperior.textContent = "🎰 Girando..."; 
-          
-        } else if (datos.mensaje === "esperando apuestas de los jugadores...") {
-          puedeApostar = true;
-          mensajeSuperior.textContent = `📢 Estado: ${datos.mensaje}`;
+          mensajeSuperior.textContent = "🎰 Girando...";
+
         } else {
-          puedeApostar = false;
+          puedeApostar = datos.mensaje === "esperando apuestas de los jugadores...";
           mensajeSuperior.textContent = `📢 Estado: ${datos.mensaje}`;
         }
-
       } catch (e) {
         console.error("Error en ruleta/estado:", e);
         mensajeSuperior.textContent = "⏳ Estado: " + payload;
       }
-      } else if (topic === "ruleta/confirmacion") {
+
+    } else if (topic === "ruleta/confirmacion") {
       if (payload.startsWith(usuario)) {
         confirmaciones.textContent = "✅ " + payload;
       }
+
     } else if (topic.startsWith("ruleta/resultado/")) {
       try {
         const datos = JSON.parse(payload);
@@ -150,7 +132,7 @@ function iniciarMQTT() {
         if (!isNaN(ganador)) {
           resultado.textContent = `🎯 Número ganador: ${ganador} → ${resultadoTexto}`;
           if (datos.resultado === "ganaste") {
-            const ganancia = fichaSeleccionada * 36; // solo si acierta número exacto
+            const ganancia = fichaSeleccionada * 36;
             saldo += ganancia;
             actualizarSaldoUI();
           }
@@ -161,16 +143,39 @@ function iniciarMQTT() {
         resultado.textContent = `❌ Error al recibir resultado`;
         console.error("Error al procesar resultado:", e);
       }
+
     } else if (topic === "ruleta/chat/visible") {
       const p = document.createElement("p");
       p.textContent = payload;
       mensajesDiv.appendChild(p);
       mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
     }
+  };
+
+  client.connect({
+    onSuccess: () => {
+      console.log("✅ Conectado al broker MQTT como", usuario);
+
+      const topics = [
+        "ruleta/estado",
+        "ruleta/confirmacion",
+        "ruleta/chat/visible",
+        `ruleta/resultado/${usuario}`
+      ];
+
+      topics.forEach(t => client.subscribe(t));
+
+      setTimeout(() => {
+        const msg = new Paho.MQTT.Message(JSON.stringify({ usuario, origen: "ruleta" }));
+        msg.destinationName = "ruleta/jugadores";
+        client.send(msg);
+      }, 1000);
+    },
+    useSSL: false
   });
 
   window.addEventListener("beforeunload", () => {
-    if (client && client.connected) client.end();
+    if (client && client.isConnected()) client.disconnect();
     clearInterval(temporizadorID);
   });
 }
@@ -222,7 +227,9 @@ document.addEventListener("DOMContentLoaded", () => {
         monto: fichaSeleccionada
       };
 
-      client.publish("ruleta/apuestas", JSON.stringify(apuesta));
+      const msgApuesta = new Paho.MQTT.Message(JSON.stringify(apuesta));
+      msgApuesta.destinationName = "ruleta/apuestas";
+      client.send(msgApuesta);
 
       saldo -= fichaSeleccionada;
       apuestaTotal += fichaSeleccionada;
@@ -247,15 +254,10 @@ document.addEventListener("DOMContentLoaded", () => {
       historialApuestas.push({ celda, monto: fichaSeleccionada });
 
       // 🔄 Reforzar recepción del estado reenviando la suscripción
-      client.unsubscribe("ruleta/estado", () => {
-        client.subscribe("ruleta/estado", (err) => {
-          if (err) {
-            console.error("❌ Error al re-suscribirse a ruleta/estado", err);
-          } else {
-            console.log("🔄 Re-suscripción forzada a ruleta/estado");
-          }
-        });
-      });
+      client.unsubscribe("ruleta/estado");
+      client.subscribe("ruleta/estado");
+      console.log("🔄 Re-suscripción forzada a ruleta/estado");
+
     });
   });
 
@@ -361,7 +363,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ✅ Solo se muestra visualmente el resultado
     mensajeSuperior.textContent = `🎯 Número ganador: ${numeroGanador}`;
-    client.publish("ruleta/numeroGanador", JSON.stringify({ numeroGanador }));
+    
+    const msgNumero = new Paho.MQTT.Message(JSON.stringify({ numeroGanador }));
+    msgNumero.destinationName = "ruleta/numeroGanador";
+    client.send(msgNumero);
 
     // Opcional: borrar mensaje después de 5 segundos
     setTimeout(() => {
@@ -391,7 +396,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const texto = mensajeInput.value.trim();
     if (!texto || !usuario) return;
 
-    client.publish("ruleta/chat", JSON.stringify({ usuario, texto, origen: "cliente" }));
+    const msgChat = new Paho.MQTT.Message(JSON.stringify({ usuario, texto, origen: "cliente" }));
+    msgChat.destinationName = "ruleta/chat";
+    client.send(msgChat);
+
     mensajeInput.value = "";
   }
 
