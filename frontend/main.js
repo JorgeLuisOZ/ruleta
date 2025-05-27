@@ -1,3 +1,4 @@
+// 🎯 Referencias a elementos del DOM para mostrar información en pantalla
 const numeroInput = document.getElementById("numero");
 const mensajeInput = document.querySelector(".chat-input input");
 const confirmaciones = document.getElementById("confirmaciones");
@@ -8,33 +9,43 @@ const apuestaTotalSpan = document.getElementById("apuesta");
 const saldoSpan = document.getElementById("saldo");
 const mensajeSuperior = document.getElementById("mensaje-superior");
 
+// 👤 Datos del usuario actual
 const usuario = sessionStorage.getItem("usuarioRuleta");
 document.getElementById("usuario").textContent = usuario;
 
-let client;
-let temporizadorID;
-let fichaSeleccionada = 0;
-let puedeApostar = false;
-let anguloAcumulado = 0;
-let anguloOrbita = 0;
+// ⚙️ Variables de estado de la aplicación
+let client; // conexión MQTT
+let temporizadorID; // ID del temporizador de la cuenta regresiva
+let fichaSeleccionada = 0; // valor de la ficha actual
+let puedeApostar = false; // indica si el usuario puede apostar
+let anguloAcumulado = 0; // ángulo actual acumulado de la ruleta
+let anguloOrbita = 0; // ángulo acumulado de la bola
 
+// 💰 Control del saldo del usuario
 const claveSaldo = `saldoRuleta_${usuario}`;
 let saldo = parseInt(sessionStorage.getItem(claveSaldo));
 if (isNaN(saldo)) saldo = 5000;
 
+// 💸 Apuestas realizadas
 let apuestaTotal = 0;
 let historialApuestas = [];
 
+// 🌀 Datos de la ruleta
 const numerosRuleta = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34,
   6, 27, 13, 36, 11, 30, 8, 23, 10, 5,
   24, 16, 33, 1, 20, 14, 31, 9, 22, 18,
-  29, 7, 28, 12, 35, 3, 26];
+  29, 7, 28, 12, 35, 3, 26]; // orden europeo
 
-const offset = 355;
-const sectoresBase = [];
+const offset = 355; // desfase angular para alinear visualmente
+const sectoresBase = []; // sectores con ángulos de cada número
 const totalNumeros = numerosRuleta.length;
 const anguloSector = 360 / totalNumeros;
 
+// 🔁 Estado de la animación
+let numeroGanadorPendiente = null; // número ganador recibido pero aún no animado
+let ruletaGirando = false; // si la ruleta está girando actualmente
+
+// 🧮 Construcción de los sectores circulares de la ruleta
 for (let i = 0; i < totalNumeros; i++) {
   let desde = (offset + i * anguloSector) % 360;
   let hasta = (offset + (i + 1) * anguloSector) % 360;
@@ -48,6 +59,15 @@ function actualizarSaldoUI() {
 
 function actualizarApuestaUI() {
   apuestaTotalSpan.textContent = `$${apuestaTotal.toLocaleString()}`;
+}
+
+function actualizarSectores() {
+  sectoresBase.length = 0;
+  for (let i = 0; i < totalNumeros; i++) {
+    let desde = (offset + anguloAcumulado + i * anguloSector) % 360;
+    let hasta = (offset + anguloAcumulado + (i + 1) * anguloSector) % 360;
+    sectoresBase.push({ numero: numerosRuleta[i], desde, hasta });
+  }
 }
 
 function iniciarMQTT() {
@@ -91,26 +111,14 @@ function iniciarMQTT() {
             mensajeSuperior.textContent = `⏳ Estado: Ronda activa - faltan ${segundos}s`;
             if (segundos <= 0) clearInterval(temporizadorID);
           }, 1000);
-
         } else if (datos.mensaje === "Girando") {
           puedeApostar = false;
-
-          const ruleta = document.getElementById("ruleta");
-          const orbita = document.getElementById("orbita-bola");
-
-          anguloAcumulado += Math.floor((5 + Math.random() * 2) * 360);
-          anguloOrbita -= Math.floor((5 + Math.random() * 2) * 360);
-
-          ruleta.style.transition = "transform 4s ease-out";
-          ruleta.style.transform = `translate(-50%, -50%) rotate(${anguloAcumulado}deg)`;
-
-          orbita.style.transition = "transform 4s ease-out";
-          orbita.style.transform = `rotate(${anguloOrbita}deg)`;
-
           mensajeSuperior.textContent = "🎰 Girando...";
-
+        } else if (datos.mensaje === "Ronda terminada") {
+          puedeApostar = false;
+          mensajeSuperior.textContent = "⌛ Esperando próxima ronda...";
         } else {
-          puedeApostar = datos.mensaje === "esperando apuestas de los jugadores...";
+          puedeApostar = datos.mensaje === "Esperando apuestas de los jugadores...";
           mensajeSuperior.textContent = `📢 Estado: ${datos.mensaje}`;
         }
       } catch (e) {
@@ -123,7 +131,40 @@ function iniciarMQTT() {
         confirmaciones.textContent = "✅ " + payload;
       }
 
-    } else if (topic.startsWith("ruleta/resultado/")) {
+    } else if (topic === "ruleta/numeroGanador") {
+      try {
+        const { numeroGanador } = JSON.parse(payload);
+        numeroGanadorPendiente = numeroGanador;
+
+        const ruleta = document.getElementById("ruleta");
+        const vueltasRuleta = Math.floor(5 + Math.random() * 5);
+        const anguloFinalRuleta = vueltasRuleta * 360;
+
+        // 🧠 PRIMERO actualiza el ángulo acumulado
+        anguloAcumulado += anguloFinalRuleta;
+
+        console.log("🎯 Número ganador:", numeroGanador);
+        console.log("↻ Vueltas ruleta:", vueltasRuleta);
+        console.log("🎯 Ángulo acumulado:", anguloAcumulado.toFixed(2));
+
+        // ✅ Luego actualiza los sectores con el nuevo ángulo
+        actualizarSectores();
+
+        // 🌀 Aplica la animación con el nuevo ángulo
+        ruleta.style.transition = "transform 4s ease-out";
+        ruleta.style.transform = `translate(-50%, -50%) rotate(${anguloAcumulado}deg)`;
+
+        ruletaGirando = true;
+
+        mensajeSuperior.textContent = `🎯 Número ganador: ${numeroGanador}`;
+        setTimeout(() => {
+          mensajeSuperior.textContent = "";
+        }, 5000);
+
+      } catch (e) {
+        console.error("❌ Error al animar ruleta con número ganador:", e);
+      }
+    } else if (topic === `ruleta/resultado/${usuario}`) {
       try {
         const datos = JSON.parse(payload);
         const ganador = datos.numeroGanador;
@@ -144,12 +185,18 @@ function iniciarMQTT() {
         console.error("Error al procesar resultado:", e);
       }
 
-    } else if (topic === "ruleta/chat/visible") {
-      const p = document.createElement("p");
-      p.textContent = payload;
-      mensajesDiv.appendChild(p);
-      mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
-    }
+    } else if (topic === "ruleta/chat") {
+      try {
+        const datos = JSON.parse(payload);
+        const p = document.createElement("p");
+        p.textContent = datos.texto;
+        mensajesDiv.appendChild(p);
+        mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
+      } catch (e) {
+        console.error("❌ Error mostrando mensaje de chat:", e);
+      }
+
+    } 
   };
 
   client.connect({
@@ -159,8 +206,9 @@ function iniciarMQTT() {
       const topics = [
         "ruleta/estado",
         "ruleta/confirmacion",
-        "ruleta/chat/visible",
-        `ruleta/resultado/${usuario}`
+        "ruleta/chat",
+        `ruleta/resultado/${usuario}`,
+        "ruleta/numeroGanador" // 🆕
       ];
 
       topics.forEach(t => client.subscribe(t));
@@ -182,6 +230,34 @@ function iniciarMQTT() {
 
 document.addEventListener("DOMContentLoaded", () => {
   iniciarMQTT();
+
+  document.getElementById("ruleta").addEventListener("transitionend", (e) => {
+    if (e.propertyName !== "transform") return;
+    if (!ruletaGirando || numeroGanadorPendiente === null) return;
+
+    ruletaGirando = false;
+    actualizarSectores();
+
+    const orbita = document.getElementById("orbita-bola");
+    const sector = sectoresBase.find(s => s.numero === numeroGanadorPendiente);
+    if (!sector) return;
+
+    const centroSector = (sector.desde + sector.hasta) / 2;
+    const anguloRuletaFinal = anguloAcumulado % 360;
+
+    const vueltasBola = Math.floor(5 + Math.random() * 5);
+    const extra = vueltasBola * 360;
+
+    const anguloBolaRelativo = (360 - centroSector + anguloRuletaFinal) % 360;
+    anguloOrbita -= extra + anguloBolaRelativo;
+
+    orbita.style.transition = "transform 4s ease-out";
+    orbita.style.transform = `rotate(${anguloOrbita}deg)`;
+
+    console.log("🎯 Bola gira hacia el número", numeroGanadorPendiente, "con", vueltasBola, "vueltas extra → Ángulo:", anguloOrbita.toFixed(2));
+
+    numeroGanadorPendiente = null;
+  });
 
   // Selección de fichas
   document.querySelectorAll(".ficha").forEach(ficha => {
@@ -252,12 +328,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       historialApuestas.push({ celda, monto: fichaSeleccionada });
-
-      // 🔄 Reforzar recepción del estado reenviando la suscripción
-      client.unsubscribe("ruleta/estado");
-      client.subscribe("ruleta/estado");
-      console.log("🔄 Re-suscripción forzada a ruleta/estado");
-
     });
   });
 
@@ -285,105 +355,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelector(".boton-control.repetir").addEventListener("click", () => {
-    /* const ruleta = document.getElementById("ruleta");
-    const vueltas = 5 + Math.random() * 2; // entre 5 y 7 vueltas
-    const angulo = vueltas * 360;
-    anguloAcumulado += angulo;
-
-    ruleta.style.transition = "transform 4s cubic-bezier(0.33, 1, 0.68, 1)";
-    ruleta.style.transform = `translate(-50%, -50%) rotate(${anguloAcumulado}deg)`;
-
-    const orbita = document.getElementById("orbita-bola");
-
-    const vueltasBola = 5 + Math.random() * 2;
-    const anguloBola = vueltasBola * 360;
-
-    anguloOrbita -= anguloBola; // gira en sentido contrario a la ruleta
-    orbita.style.transition = "transform 4s cubic-bezier(0.33, 1, 0.68, 1)";
-    orbita.style.transform = `rotate(${anguloOrbita}deg)`;*/
-  });
-  
-  // Función para obtener ángulo de rotación desde el transform CSS
-  function obtenerAnguloDeRotacion(elemento) {
-    const estilo = window.getComputedStyle(elemento);
-    const transform = estilo.transform || estilo.webkitTransform;
-
-    if (transform && transform !== "none") {
-      const valores = transform.match(/matrix\(([^)]+)\)/);
-      if (!valores) return 0;
-      const partes = valores[1].split(",");
-      const a = parseFloat(partes[0]);
-      const b = parseFloat(partes[1]);
-      let angulo = Math.round(Math.atan2(b, a) * (180 / Math.PI));
-      if (angulo < 0) angulo += 360;
-      return angulo;
-    }
-    return 0;
-  }
-
-  // Función para ajustar sector con rotación actual de la ruleta
-  function sectorConRotacion(sector, rotacion) {
-    return {
-      numero: sector.numero,
-      desde: (sector.desde + rotacion) % 360,
-      hasta: (sector.hasta + rotacion) % 360
-    };
-  }
-
-  // Función para encontrar número ganador comparando ángulo bola con sectores rotados
-  function encontrarNumeroGanador(anguloBola, sectores, rotacionRuleta) {
-    for (const sector of sectores) {
-      const sectorRot = sectorConRotacion(sector, rotacionRuleta);
-      if (sectorRot.desde > sectorRot.hasta) {
-        // Sector cruza 0 grados
-        if (anguloBola >= sectorRot.desde || anguloBola <= sectorRot.hasta) {
-          return sectorRot.numero;
-        }
-      } else {
-        if (anguloBola >= sectorRot.desde && anguloBola <= sectorRot.hasta) {
-          return sectorRot.numero;
-        }
-      }
-    }
-    return null;
-  }
-
-  function detectarNumeroGanador() {
-    const ruleta = document.getElementById("ruleta");
-    const orbita = document.getElementById("orbita-bola");
-
-    const anguloRuleta = obtenerAnguloDeRotacion(ruleta);
-    const anguloBola = obtenerAnguloDeRotacion(orbita);
-
-    const numeroGanador = encontrarNumeroGanador(anguloBola, sectoresBase, anguloRuleta);
-
-    console.log('Ángulo ruleta:', anguloRuleta);
-    console.log('Ángulo bola:', anguloBola);
-    console.log('Número ganador:', numeroGanador);
-
-    // ✅ Solo se muestra visualmente el resultado
-    mensajeSuperior.textContent = `🎯 Número ganador: ${numeroGanador}`;
     
-    const msgNumero = new Paho.MQTT.Message(JSON.stringify({ numeroGanador }));
-    msgNumero.destinationName = "ruleta/numeroGanador";
-    client.send(msgNumero);
-
-    // Opcional: borrar mensaje después de 5 segundos
-    setTimeout(() => {
-      mensajeSuperior.textContent = "";
-    }, 5000);
-  }
-
-  // Escuchar cuando termina la animación de ruleta y bola
-  const ruleta = document.getElementById("ruleta");
-  const orbita = document.getElementById("orbita-bola");
-
-  ruleta.addEventListener("transitionend", () => {
-    detectarNumeroGanador();
-  });
-
-  orbita.addEventListener("transitionend", () => {
-    detectarNumeroGanador();
   });
 
   // Enviar mensaje
@@ -397,7 +369,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!texto || !usuario) return;
 
     const msgChat = new Paho.MQTT.Message(JSON.stringify({ usuario, texto, origen: "cliente" }));
-    msgChat.destinationName = "ruleta/chat";
+    msgChat.destinationName = "ruleta/mensajes";
     client.send(msgChat);
 
     mensajeInput.value = "";

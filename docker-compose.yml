@@ -9,22 +9,22 @@ services:
       - ./mqtt/mqtt.conf:/mosquitto/config/mosquitto.conf
     restart: unless-stopped
 
-  ruleta:
+  casino:
     build:
       context: .
-    container_name: ruleta-backend
+    container_name: casino
     depends_on:
       - mqtt
     ports:
       - "3000:3000"
     working_dir: /app/backend
-    command: node ruleta.js
+    command: node casino.js
 
-  admin:
+  ruelta:
     build:
       context: .
-    container_name: ruleta-admin
+    container_name: ruleta
     depends_on:
       - mqtt
     working_dir: /app/backend
-    command: node admin.js
+    command: node ruleta.js

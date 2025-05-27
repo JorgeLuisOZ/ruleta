@@ -19,5 +19,5 @@ COPY frontend ./frontend
 # Expone el puerto del backend
 EXPOSE 3000
 
-# Comando por defecto: cambia según el servicio (admin o ruleta)
-CMD ["node", "ruleta.js"]
+# Comando por defecto: cambia según el servicio 
+CMD ["node", "casino.js"]
