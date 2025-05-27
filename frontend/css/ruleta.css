@@ -217,6 +217,21 @@ body {
   background: black;
 }
 
+#mensaje-confirmaciones {
+  color: white;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: 600;
+  font-size: 1.25rem;
+  background-color: rgba(0, 0, 0, 0.6);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  text-align: center;
+  min-height: 1.8em;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  display: none;
+}
+
 /* ZONA INFERIOR */
 .bottom-bar {
   display: flex;

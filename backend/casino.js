@@ -34,7 +34,7 @@ client.on("connect", () => {
   console.log("✅ Casino.js conectado al broker MQTT");
 
   client.subscribe("ruleta/jugadores");
-  client.subscribe("ruleta/mensajes"); // 👈 ahora los jugadores publican aquí
+  client.subscribe("ruleta/mensajes"); 
   client.subscribe("ruleta/estado");
   client.subscribe("ruleta/apuestas");
   client.subscribe("ruleta/numeroGanador");
@@ -73,7 +73,7 @@ client.on("message", (topic, message) => {
     }
   }
 
-  // ✅ Nuevo flujo de mensajes de chat
+  // Flujo de mensajes de chat
   if (topic === "ruleta/mensajes") {
     try {
       const msg = JSON.parse(payload);
@@ -98,7 +98,10 @@ client.on("message", (topic, message) => {
   if (topic === "ruleta/apuestas") {
     try {
       const { usuario, numero } = JSON.parse(payload);
-      if (!usuario || isNaN(parseInt(numero))) return;
+      const validas = [
+        "Rojo", "Negro", "Par", "Impar", "1–18", "1-18", "19–36", "19-36", "2to1"
+      ];
+      if (!usuario || (isNaN(parseInt(numero)) && !validas.includes(numero))) return;
 
       apuestas = apuestas.filter(a => a.usuario !== usuario);
       apuestas.push({ usuario, numero });

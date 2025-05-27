@@ -1,9 +1,8 @@
 // 🎯 Referencias a elementos del DOM para mostrar información en pantalla
 const numeroInput = document.getElementById("numero");
 const mensajeInput = document.querySelector(".chat-input input");
-const confirmaciones = document.getElementById("confirmaciones");
+const confirmaciones = document.getElementById("mensaje-confirmaciones");
 const estado = document.getElementById("estado");
-const resultado = document.getElementById("resultado");
 const mensajesDiv = document.getElementById("mensajes");
 const apuestaTotalSpan = document.getElementById("apuesta");
 const saldoSpan = document.getElementById("saldo");
@@ -18,7 +17,6 @@ let client; // conexión MQTT
 let temporizadorID; // ID del temporizador de la cuenta regresiva
 let fichaSeleccionada = 0; // valor de la ficha actual
 let puedeApostar = false; // indica si el usuario puede apostar
-let anguloAcumulado = 0; // ángulo actual acumulado de la ruleta
 let anguloOrbita = 0; // ángulo acumulado de la bola
 
 // 💰 Control del saldo del usuario
@@ -43,7 +41,6 @@ const anguloSector = 360 / totalNumeros;
 
 // 🔁 Estado de la animación
 let numeroGanadorPendiente = null; // número ganador recibido pero aún no animado
-let ruletaGirando = false; // si la ruleta está girando actualmente
 
 // 🧮 Construcción de los sectores circulares de la ruleta
 for (let i = 0; i < totalNumeros; i++) {
@@ -61,15 +58,6 @@ function actualizarApuestaUI() {
   apuestaTotalSpan.textContent = `$${apuestaTotal.toLocaleString()}`;
 }
 
-function actualizarSectores() {
-  sectoresBase.length = 0;
-  for (let i = 0; i < totalNumeros; i++) {
-    let desde = (offset + anguloAcumulado + i * anguloSector) % 360;
-    let hasta = (offset + anguloAcumulado + (i + 1) * anguloSector) % 360;
-    sectoresBase.push({ numero: numerosRuleta[i], desde, hasta });
-  }
-}
-
 function iniciarMQTT() {
   if (!usuario) {
     alert("No se ha definido un usuario. Vuelve al login.");
@@ -83,8 +71,10 @@ function iniciarMQTT() {
   client = new Paho.MQTT.Client(window.location.hostname, 9001, clientId);
 
   client.onConnectionLost = (responseObject) => {
+    console.error("❌ MQTT desconectado:", responseObject);
     if (responseObject.errorCode !== 0) {
-      console.error("❌ Conexión perdida:", responseObject.errorMessage);
+      console.error("🔎 Código:", responseObject.errorCode);
+      console.error("🔎 Mensaje:", responseObject.errorMessage);
     }
   };
 
@@ -109,14 +99,74 @@ function iniciarMQTT() {
           temporizadorID = setInterval(() => {
             segundos--;
             mensajeSuperior.textContent = `⏳ Estado: Ronda activa - faltan ${segundos}s`;
-            if (segundos <= 0) clearInterval(temporizadorID);
+
+            if (segundos <= 0) {
+              clearInterval(temporizadorID);
+              puedeApostar = false;
+
+              // 📤 Publicar apuestas acumuladas al finalizar la cuenta regresiva
+              historialApuestas.forEach(({ celda, monto, numero }) => {
+                let texto = numero;
+
+                if (!texto && celda) {
+                  const className = celda.className;
+                  const contenido = celda.innerText.trim().toLowerCase();
+
+                  if (className.includes("apuesta doble rojo")) {
+                    texto = "Rojo";
+                  } else if (className.includes("apuesta doble negro")) {
+                    texto = "Negro";
+                  } else if (className.includes("apuesta doble") && contenido.includes("par")) {
+                    texto = "Par";
+                  } else if (className.includes("apuesta doble") && contenido.includes("impar")) {
+                    texto = "Impar";
+                  } else if (className.includes("apuesta doble") && (contenido.includes("1–18") || contenido.includes("1-18"))) {
+                    texto = "1–18";
+                  } else if (className.includes("apuesta doble") && (contenido.includes("19–36") || contenido.includes("19-36"))) {
+                    texto = "19–36";
+                  } else if (contenido !== "") {
+                    texto = celda.innerText.trim();
+                  } else {
+                    return; // No se pudo determinar la apuesta
+                  }
+                }
+
+                const msg = new Paho.MQTT.Message(JSON.stringify({
+                  usuario,
+                  numero: texto,
+                  monto
+                }));
+                msg.destinationName = "ruleta/apuestas";
+                client.send(msg);
+
+                console.log(`📤 apuesta: $${monto} al ${texto}`);
+              });
+            }
           }, 1000);
         } else if (datos.mensaje === "Girando") {
           puedeApostar = false;
           mensajeSuperior.textContent = "🎰 Girando...";
         } else if (datos.mensaje === "Ronda terminada") {
           puedeApostar = false;
-          mensajeSuperior.textContent = "⌛ Esperando próxima ronda...";
+
+          // 🧽 Limpiar todas las fichas visuales del tablero
+          document.querySelectorAll(".ficha-apuesta").forEach(ficha => ficha.remove());
+
+          // 🔁 Reiniciar el historial y totales
+          historialApuestas = [];
+          apuestaTotal = 0;
+          actualizarApuestaUI();
+
+          if (numeroGanadorPendiente !== null) {
+            mensajeSuperior.textContent = `🎯 Número ganador: ${numeroGanadorPendiente}`;
+
+            setTimeout(() => {
+              mensajeSuperior.textContent = "⌛ Esperando próxima ronda...";
+              numeroGanadorPendiente = null;
+            }, 3000); // ⏱️ Mostrar por 3 segundos
+          } else {
+            mensajeSuperior.textContent = "⌛ Esperando próxima ronda...";
+          }
         } else {
           puedeApostar = datos.mensaje === "Esperando apuestas de los jugadores...";
           mensajeSuperior.textContent = `📢 Estado: ${datos.mensaje}`;
@@ -125,66 +175,45 @@ function iniciarMQTT() {
         console.error("Error en ruleta/estado:", e);
         mensajeSuperior.textContent = "⏳ Estado: " + payload;
       }
+    } if (topic === "ruleta/confirmacion") {
+        if (payload.startsWith(usuario)) {
+          confirmaciones.textContent = "✅ " + payload;
 
-    } else if (topic === "ruleta/confirmacion") {
-      if (payload.startsWith(usuario)) {
-        confirmaciones.textContent = "✅ " + payload;
-      }
+          // Mostrar el div
+          confirmaciones.style.display = "block";
 
-    } else if (topic === "ruleta/numeroGanador") {
+          // Ocultarlo después de 6 segundos que dura la parte de girando
+          setTimeout(() => {
+            confirmaciones.style.display = "none";
+          }, 6000);
+        }
+      } else if (topic === "ruleta/numeroGanador") {
       try {
         const { numeroGanador } = JSON.parse(payload);
         numeroGanadorPendiente = numeroGanador;
 
-        const ruleta = document.getElementById("ruleta");
-        const vueltasRuleta = Math.floor(5 + Math.random() * 5);
-        const anguloFinalRuleta = vueltasRuleta * 360;
+        anguloOrbita = 0;
 
-        // 🧠 PRIMERO actualiza el ángulo acumulado
-        anguloAcumulado += anguloFinalRuleta;
+        const orbita = document.getElementById("orbita-bola");
+        const sector = sectoresBase.find(s => s.numero === numeroGanadorPendiente);
+        if (!sector) return;
 
-        console.log("🎯 Número ganador:", numeroGanador);
-        console.log("↻ Vueltas ruleta:", vueltasRuleta);
-        console.log("🎯 Ángulo acumulado:", anguloAcumulado.toFixed(2));
+        const centroSector = (sector.desde + sector.hasta) / 2;
 
-        // ✅ Luego actualiza los sectores con el nuevo ángulo
-        actualizarSectores();
+        const vueltasBola = Math.floor(5 + Math.random() * 5);
+        const extra = vueltasBola * 360;
 
-        // 🌀 Aplica la animación con el nuevo ángulo
-        ruleta.style.transition = "transform 4s ease-out";
-        ruleta.style.transform = `translate(-50%, -50%) rotate(${anguloAcumulado}deg)`;
+        const anguloBolaRelativo = (360 - centroSector) % 360;
+        anguloOrbita -= extra + anguloBolaRelativo;
 
-        ruletaGirando = true;
+        orbita.style.transition = "transform 4s ease-out";
+        orbita.style.transform = `rotate(${anguloOrbita}deg)`;
 
-        mensajeSuperior.textContent = `🎯 Número ganador: ${numeroGanador}`;
-        setTimeout(() => {
-          mensajeSuperior.textContent = "";
-        }, 5000);
+        console.log("🎯 Bola gira hacia el número", numeroGanadorPendiente, "con", vueltasBola, "vueltas extra → Ángulo:", anguloOrbita.toFixed(2));
 
       } catch (e) {
-        console.error("❌ Error al animar ruleta con número ganador:", e);
+        console.error("❌ Error al animar bola con número ganador:", e);
       }
-    } else if (topic === `ruleta/resultado/${usuario}`) {
-      try {
-        const datos = JSON.parse(payload);
-        const ganador = datos.numeroGanador;
-        const resultadoTexto = datos.resultado?.toUpperCase() || "RESULTADO DESCONOCIDO";
-
-        if (!isNaN(ganador)) {
-          resultado.textContent = `🎯 Número ganador: ${ganador} → ${resultadoTexto}`;
-          if (datos.resultado === "ganaste") {
-            const ganancia = fichaSeleccionada * 36;
-            saldo += ganancia;
-            actualizarSaldoUI();
-          }
-        } else {
-          resultado.textContent = `⚠️ Resultado inválido`;
-        }
-      } catch (e) {
-        resultado.textContent = `❌ Error al recibir resultado`;
-        console.error("Error al procesar resultado:", e);
-      }
-
     } else if (topic === "ruleta/chat") {
       try {
         const datos = JSON.parse(payload);
@@ -207,8 +236,7 @@ function iniciarMQTT() {
         "ruleta/estado",
         "ruleta/confirmacion",
         "ruleta/chat",
-        `ruleta/resultado/${usuario}`,
-        "ruleta/numeroGanador" // 🆕
+        "ruleta/numeroGanador" 
       ];
 
       topics.forEach(t => client.subscribe(t));
@@ -231,34 +259,6 @@ function iniciarMQTT() {
 document.addEventListener("DOMContentLoaded", () => {
   iniciarMQTT();
 
-  document.getElementById("ruleta").addEventListener("transitionend", (e) => {
-    if (e.propertyName !== "transform") return;
-    if (!ruletaGirando || numeroGanadorPendiente === null) return;
-
-    ruletaGirando = false;
-    actualizarSectores();
-
-    const orbita = document.getElementById("orbita-bola");
-    const sector = sectoresBase.find(s => s.numero === numeroGanadorPendiente);
-    if (!sector) return;
-
-    const centroSector = (sector.desde + sector.hasta) / 2;
-    const anguloRuletaFinal = anguloAcumulado % 360;
-
-    const vueltasBola = Math.floor(5 + Math.random() * 5);
-    const extra = vueltasBola * 360;
-
-    const anguloBolaRelativo = (360 - centroSector + anguloRuletaFinal) % 360;
-    anguloOrbita -= extra + anguloBolaRelativo;
-
-    orbita.style.transition = "transform 4s ease-out";
-    orbita.style.transform = `rotate(${anguloOrbita}deg)`;
-
-    console.log("🎯 Bola gira hacia el número", numeroGanadorPendiente, "con", vueltasBola, "vueltas extra → Ángulo:", anguloOrbita.toFixed(2));
-
-    numeroGanadorPendiente = null;
-  });
-
   // Selección de fichas
   document.querySelectorAll(".ficha").forEach(ficha => {
     ficha.addEventListener("click", () => {
@@ -277,19 +277,23 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Apuestas en casillas
   document.querySelectorAll(".celda").forEach(celda => {
     celda.addEventListener("click", () => {
-      const texto = celda.textContent.trim();
-      
       if (!puedeApostar) {
         alert("⛔ No se puede apostar en este momento.");
         return;
       }
 
-      if (!fichaSeleccionada || !texto) {
-        alert("Selecciona una ficha y una casilla válida.");
+      if (!fichaSeleccionada) {
+        alert("Selecciona una ficha primero.");
         return;
+      }
+
+      let texto = celda.textContent.trim();
+      if (!texto) {
+        if (celda.classList.contains("rojo")) texto = "Rojo";
+        else if (celda.classList.contains("negro")) texto = "Negro";
+        else return alert("Casilla no válida para apuesta.");
       }
 
       if (fichaSeleccionada > saldo) {
@@ -297,22 +301,15 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const apuesta = {
-        usuario,
-        numero: texto,
-        monto: fichaSeleccionada
-      };
-
-      const msgApuesta = new Paho.MQTT.Message(JSON.stringify(apuesta));
-      msgApuesta.destinationName = "ruleta/apuestas";
-      client.send(msgApuesta);
+      // Guardar en historial con formato requerido
+      historialApuestas.push({ celda, monto: fichaSeleccionada, numero: texto });
 
       saldo -= fichaSeleccionada;
       apuestaTotal += fichaSeleccionada;
       actualizarSaldoUI();
       actualizarApuestaUI();
 
-      // Buscar ficha existente en esta celda
+      // Mostrar ficha visual
       let fichaVisual = Array.from(celda.children).find(child =>
         child.classList.contains("ficha-apuesta")
       );
@@ -326,8 +323,6 @@ document.addEventListener("DOMContentLoaded", () => {
         fichaVisual.textContent = `$${fichaSeleccionada}`;
         celda.appendChild(fichaVisual);
       }
-
-      historialApuestas.push({ celda, monto: fichaSeleccionada });
     });
   });
 

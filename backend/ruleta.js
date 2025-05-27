@@ -13,7 +13,7 @@ client.on("connect", () => {
   // Iniciar bucle automático de rondas cada 30 segundos
   setInterval(() => {
     if (!rondaActiva) iniciarRonda();
-  }, 30000); // cada 30 segundos
+  }, 30000);
 });
 
 function iniciarRonda() {
@@ -25,21 +25,23 @@ function iniciarRonda() {
   console.log("🟢 Ronda activa iniciada");
 
   setTimeout(() => {
+    // 🔢 Generar número ganador ANTES de girar
+    const numeroGanador = Math.floor(Math.random() * 37);
+    client.publish("ruleta/numeroGanador", JSON.stringify({ numeroGanador }), { retain: true });
+    console.log(`🎰 Número ganador: ${numeroGanador}`);
+
+    // 🔄 Luego notificar que está girando
     estadoActual = { mensaje: "Girando" };
     client.publish("ruleta/estado", JSON.stringify(estadoActual), { retain: true });
-    console.log("🔄 Girando...");
+    console.log("🔄 Ruleta girando...");
 
     setTimeout(() => {
-      const numeroGanador = Math.floor(Math.random() * 37);
-      console.log(`🎰 Número ganador: ${numeroGanador}`);
-
-      client.publish("ruleta/numeroGanador", JSON.stringify({ numeroGanador }), { retain: true });
-
       estadoActual = { mensaje: "Ronda terminada" };
       client.publish("ruleta/estado", JSON.stringify(estadoActual), { retain: true });
       console.log("🔴 Ronda terminada");
 
       rondaActiva = false;
-    }, 8000); // tiempo de giro
+    }, 6000); // tiempo de animación de la bola
+
   }, 15000); // tiempo de apuestas
 }
