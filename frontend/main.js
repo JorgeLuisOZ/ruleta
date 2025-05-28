@@ -40,7 +40,10 @@ const totalNumeros = numerosRuleta.length;
 const anguloSector = 360 / totalNumeros;
 
 // 🔁 Estado de la animación
-let numeroGanadorPendiente = null; // número ganador recibido pero aún no animado
+let numeroGanadorPendiente = null; 
+
+// Resultado por usuario
+let resultadoPendiente = null;
 
 // 🧮 Construcción de los sectores circulares de la ruleta
 for (let i = 0; i < totalNumeros; i++) {
@@ -57,6 +60,17 @@ function actualizarSaldoUI() {
 function actualizarApuestaUI() {
   apuestaTotalSpan.textContent = `$${apuestaTotal.toLocaleString()}`;
 }
+
+function mostrarModalGanancia(montoGanado) {
+    const modal = document.getElementById("modalGanancia");
+    const mensaje = document.getElementById("mensajeGanancia");
+    mensaje.textContent = `Ganaste $${montoGanado.toLocaleString()}`;
+    modal.classList.remove("oculto");
+  }
+
+  function ocultarModalGanancia() {
+    document.getElementById("modalGanancia").classList.add("oculto");
+  }
 
 function iniciarMQTT() {
   if (!usuario) {
@@ -112,7 +126,16 @@ function iniciarMQTT() {
                   const className = celda.className;
                   const contenido = celda.innerText.trim().toLowerCase();
 
-                  if (className.includes("apuesta doble rojo")) {
+                  // 🎯 Detección de "2to1" por fila
+                  if (className.includes("apuesta") && className.includes("fila")) {
+                    if (className.includes("uno")) {
+                      texto = "2to1 (columna 1)";
+                    } else if (className.includes("dos")) {
+                      texto = "2to1 (columna 2)";
+                    } else if (className.includes("tres")) {
+                      texto = "2to1 (columna 3)";
+                    }
+                  } else if (className.includes("apuesta doble rojo")) {
                     texto = "Rojo";
                   } else if (className.includes("apuesta doble negro")) {
                     texto = "Negro";
@@ -127,7 +150,7 @@ function iniciarMQTT() {
                   } else if (contenido !== "") {
                     texto = celda.innerText.trim();
                   } else {
-                    return; // No se pudo determinar la apuesta
+                    return; // ⚠️ No se pudo determinar la apuesta, se omite
                   }
                 }
 
@@ -160,6 +183,19 @@ function iniciarMQTT() {
           if (numeroGanadorPendiente !== null) {
             mensajeSuperior.textContent = `🎯 Número ganador: ${numeroGanadorPendiente}`;
 
+            // ✅ Mostrar ganancia si hay resultado pendiente
+            if (resultadoPendiente) {
+              const { montoGanado } = resultadoPendiente;
+              if (montoGanado > 0) {
+                saldo += montoGanado;
+                actualizarSaldoUI();
+                mostrarModalGanancia(montoGanado);
+              } else {
+                console.log("⛔ No hubo ganancia.");
+              }
+              resultadoPendiente = null; // Limpiar para siguiente ronda
+            }
+
             setTimeout(() => {
               mensajeSuperior.textContent = "⌛ Esperando próxima ronda...";
               numeroGanadorPendiente = null;
@@ -167,27 +203,24 @@ function iniciarMQTT() {
           } else {
             mensajeSuperior.textContent = "⌛ Esperando próxima ronda...";
           }
-        } else {
-          puedeApostar = datos.mensaje === "Esperando apuestas de los jugadores...";
-          mensajeSuperior.textContent = `📢 Estado: ${datos.mensaje}`;
         }
       } catch (e) {
         console.error("Error en ruleta/estado:", e);
         mensajeSuperior.textContent = "⏳ Estado: " + payload;
       }
     } if (topic === "ruleta/confirmacion") {
-        if (payload.startsWith(usuario)) {
-          confirmaciones.textContent = "✅ " + payload;
+      if (payload.startsWith(usuario)) {
+        confirmaciones.textContent = "✅ " + payload;
 
-          // Mostrar el div
-          confirmaciones.style.display = "block";
+        confirmaciones.style.display = "block";
 
-          // Ocultarlo después de 6 segundos que dura la parte de girando
-          setTimeout(() => {
-            confirmaciones.style.display = "none";
-          }, 6000);
-        }
-      } else if (topic === "ruleta/numeroGanador") {
+        clearTimeout(confirmaciones._timeoutId);
+        confirmaciones._timeoutId = setTimeout(() => {
+          confirmaciones.style.display = "none";
+          confirmaciones.textContent = "";
+        }, 6000);
+      }
+    } else if (topic === "ruleta/numeroGanador") {
       try {
         const { numeroGanador } = JSON.parse(payload);
         numeroGanadorPendiente = numeroGanador;
@@ -214,6 +247,13 @@ function iniciarMQTT() {
       } catch (e) {
         console.error("❌ Error al animar bola con número ganador:", e);
       }
+    } else if (topic === "ruleta/resultado/" + usuario) {
+      try {
+        resultadoPendiente = JSON.parse(payload); 
+        console.log("📦 Resultado recibido (esperando mostrar):", resultadoPendiente);
+      } catch (e) {
+        console.error("❌ Error procesando resultado de ruleta:", e);
+      }
     } else if (topic === "ruleta/chat") {
       try {
         const datos = JSON.parse(payload);
@@ -236,7 +276,8 @@ function iniciarMQTT() {
         "ruleta/estado",
         "ruleta/confirmacion",
         "ruleta/chat",
-        "ruleta/numeroGanador" 
+        "ruleta/numeroGanador",
+        "ruleta/resultado/" + usuario
       ];
 
       topics.forEach(t => client.subscribe(t));
@@ -290,6 +331,16 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       let texto = celda.textContent.trim();
+
+      // ✅ Identificación especial para casillas 2to1
+      if (celda.classList.contains("apuesta") && celda.classList.contains("fila")) {
+        if (celda.classList.contains("uno")) texto = "2to1 (columna 1)";
+        else if (celda.classList.contains("dos")) texto = "2to1 (columna 2)";
+        else if (celda.classList.contains("tres")) texto = "2to1 (columna 3)";
+        else texto = "2to1";
+      }
+
+      // ✅ Para colores sin texto
       if (!texto) {
         if (celda.classList.contains("rojo")) texto = "Rojo";
         else if (celda.classList.contains("negro")) texto = "Negro";
@@ -301,7 +352,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // Guardar en historial con formato requerido
+      // Guardar en historial
       historialApuestas.push({ celda, monto: fichaSeleccionada, numero: texto });
 
       saldo -= fichaSeleccionada;
@@ -309,7 +360,7 @@ document.addEventListener("DOMContentLoaded", () => {
       actualizarSaldoUI();
       actualizarApuestaUI();
 
-      // Mostrar ficha visual
+      // Mostrar ficha visual acumulada
       let fichaVisual = Array.from(celda.children).find(child =>
         child.classList.contains("ficha-apuesta")
       );

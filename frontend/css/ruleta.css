@@ -200,7 +200,19 @@ body {
 .celda.rojo { background: red; }
 .celda.negro { background: black; }
 
-.celda.apuesta {
+.celda.apuesta.fila.uno {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  backdrop-filter: blur(3px);
+}
+
+.celda.apuesta.fila.dos {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  backdrop-filter: blur(3px);
+}
+
+.celda.apuesta.fila.tres {
   background-color: rgba(255, 255, 255, 0.1);
   color: white;
   backdrop-filter: blur(3px);
@@ -404,4 +416,58 @@ body {
   border-radius: 0 5px 5px 0;
   font-weight: bold;
   cursor: pointer;
+}
+
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #1e1e1e;
+  color: #fff;
+  padding: 40px 30px;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 300px;
+  max-width: 90%;
+  text-align: center;
+}
+
+.modal-contenido {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.modal .emoji {
+  font-size: 3rem;
+}
+
+.modal .mensaje {
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+.modal button {
+  background-color: #007bff;
+  border: none;
+  padding: 10px 25px;
+  color: white;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.modal button:hover {
+  background-color: #0056b3;
+}
+
+.oculto {
+  display: none;
 }

@@ -44,21 +44,21 @@
             <div class="celda rojo">12</div><div class="celda negro">15</div><div class="celda rojo">18</div>
             <div class="celda rojo">21</div><div class="celda negro">24</div><div class="celda rojo">27</div>
             <div class="celda rojo">30</div><div class="celda negro">33</div><div class="celda rojo">36</div>
-            <div class="celda apuesta">2to1</div>
+            <div class="celda apuesta fila uno">2to1</div>
           </div>
           <div class="fila">
             <div class="celda negro">2</div><div class="celda rojo">5</div><div class="celda negro">8</div>
             <div class="celda negro">11</div><div class="celda rojo">14</div><div class="celda negro">17</div>
             <div class="celda negro">20</div><div class="celda rojo">23</div><div class="celda negro">26</div>
             <div class="celda negro">29</div><div class="celda rojo">32</div><div class="celda negro">35</div>
-            <div class="celda apuesta">2to1</div>
+            <div class="celda apuesta fila dos">2to1</div>
           </div>
           <div class="fila">
             <div class="celda rojo">1</div><div class="celda negro">4</div><div class="celda rojo">7</div>
             <div class="celda negro">10</div><div class="celda negro">13</div><div class="celda rojo">16</div>
             <div class="celda rojo">19</div><div class="celda negro">22</div><div class="celda rojo">25</div>
             <div class="celda negro">28</div><div class="celda negro">31</div><div class="celda rojo">34</div>
-            <div class="celda apuesta">2to1</div>
+            <div class="celda apuesta fila tres">2to1</div>
           </div>
           <div class="fila">
             <div class="celda apuesta doble">1–18</div>
@@ -105,6 +105,15 @@
         <input type="text" placeholder="Escribe tu mensaje..." />
         <button>Enviar</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 🎉 Modal de Ganancia -->
+  <div id="modalGanancia" class="modal oculto">
+    <div class="modal-contenido">
+      <div class="emoji">🎉</div>
+      <div id="mensajeGanancia" class="mensaje"></div>
+      <button onclick="ocultarModalGanancia()">Aceptar</button>
     </div>
   </div>
 
