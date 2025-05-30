@@ -20,7 +20,7 @@ services:
     working_dir: /app/backend
     command: node casino.js
 
-  ruelta:
+  ruleta:
     build:
       context: .
     container_name: ruleta

@@ -1,10 +1,10 @@
 {
-  "name": "ruleta-backend",
+  "name": "ruleta",
   "version": "1.0.0",
   "description": "Sistema de ruleta multijugador con MQTT",
-  "main": "ruleta.js",
+  "main": "casino.js",
   "scripts": {
-    "start": "node ruleta.js"
+    "start": "node casino.js"
   },
   "author": "Fernando",
   "license": "MIT",
