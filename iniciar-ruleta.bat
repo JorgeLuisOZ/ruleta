@@ -1,4 +1,5 @@
 @echo off
+
 echo 🔄 Cerrando contenedores y limpiando volúmenes...
 docker-compose down --volumes --remove-orphans
 

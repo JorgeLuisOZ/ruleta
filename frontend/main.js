@@ -68,9 +68,9 @@ function mostrarModalGanancia(montoGanado) {
     modal.classList.remove("oculto");
   }
 
-  function ocultarModalGanancia() {
-    document.getElementById("modalGanancia").classList.add("oculto");
-  }
+function ocultarModalGanancia() {
+  document.getElementById("modalGanancia").classList.add("oculto");
+}
 
 function iniciarMQTT() {
   if (!usuario) {
@@ -399,9 +399,107 @@ document.addEventListener("DOMContentLoaded", () => {
     actualizarSaldoUI();
     actualizarApuestaUI();
   });
+  
+  document.querySelector(".boton-control.doblar").addEventListener("click", () => {
+    if (!puedeApostar) {
+      alert("⛔ No se puede apostar en este momento.");
+      return;
+    }
+
+    if (historialApuestas.length === 0) {
+      alert("⛔ No hay apuestas previas para duplicar.");
+      return;
+    }
+
+    let apuestaDuplicada = 0;
+
+    // Recorrer las apuestas en el historial y duplicarlas (sumar la apuesta existente)
+    historialApuestas.forEach(({ celda, monto, numero }, index) => {
+      // Sumar el monto de la apuesta al monto actual
+      const nuevaApuesta = monto;  // Sumamos el monto actual nuevamente
+
+      // Verificar si el usuario tiene suficiente saldo
+      if (nuevaApuesta > saldo) {
+        alert("⛔ No tienes suficiente saldo para duplicar la apuesta.");
+        return;
+      }
+
+      // Actualizar el saldo y la apuesta total
+      saldo -= nuevaApuesta;
+      apuestaTotal += nuevaApuesta;
+      actualizarSaldoUI();
+      actualizarApuestaUI();
+
+      // Modificar la ficha visual de la apuesta en el tablero
+      let fichaVisual = Array.from(celda.children).find(child =>
+        child.classList.contains("ficha-apuesta")
+      );
+
+      if (fichaVisual) {
+        // Si ya hay una ficha visual, se actualiza sumando la nueva apuesta
+        const actual = parseInt(fichaVisual.textContent.replace('$', ''));
+        fichaVisual.textContent = `$${actual + nuevaApuesta}`;  // Se suma la apuesta original nuevamente
+      } else {
+        // Si no hay ficha visual, se crea una nueva con el valor de la nueva apuesta
+        fichaVisual = document.createElement("div");
+        fichaVisual.classList.add("ficha-apuesta");
+        fichaVisual.textContent = `$${nuevaApuesta}`;
+        celda.appendChild(fichaVisual);
+      }
+
+      // Actualizar el monto de la apuesta en el historial sin eliminarla
+      historialApuestas[index].monto += nuevaApuesta;
+
+      // Contabilizar la apuesta duplicada
+      apuestaDuplicada += nuevaApuesta;
+    });
+
+    // Al finalizar, mostramos el total de las apuestas duplicadas
+    console.log(`📦 Apuesta total duplicada: $${apuestaDuplicada}`);
+  });
 
   document.querySelector(".boton-control.repetir").addEventListener("click", () => {
-    
+    if (!puedeApostar) {
+      alert("⛔ No se puede apostar en este momento.");
+      return;
+    }
+
+    if (historialApuestas.length === 0) {
+      alert("⛔ No hay apuestas previas para repetir.");
+      return;
+    }
+
+    // Repetir la última apuesta
+    const ultimaApuesta = historialApuestas[historialApuestas.length - 1];
+    const { celda, monto, numero } = ultimaApuesta;
+
+    if (fichaSeleccionada > saldo) {
+      alert("Saldo insuficiente para repetir la apuesta.");
+      return;
+    }
+
+    // Guardar en historial nuevamente
+    historialApuestas.push({ celda, monto, numero });
+
+    saldo -= monto;
+    apuestaTotal += monto;
+    actualizarSaldoUI();
+    actualizarApuestaUI();
+
+    // Mostrar ficha visual acumulada
+    let fichaVisual = Array.from(celda.children).find(child =>
+      child.classList.contains("ficha-apuesta")
+    );
+
+    if (fichaVisual) {
+      const actual = parseInt(fichaVisual.textContent.replace('$', ''));
+      fichaVisual.textContent = `$${actual + monto}`;
+    } else {
+      fichaVisual = document.createElement("div");
+      fichaVisual.classList.add("ficha-apuesta");
+      fichaVisual.textContent = `$${monto}`;
+      celda.appendChild(fichaVisual);
+    }
   });
 
   // Enviar mensaje

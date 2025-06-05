@@ -2,12 +2,19 @@
     "version": "2.0.0",
     "tasks": [
       {
-        "label": "Iniciar Ruleta Docker",
+        "label": "Iniciar Ruleta Docker Windows",
         "type": "shell",
         "command": ".\\iniciar-ruleta.bat",
         "group": "build",
         "problemMatcher": []
-      }
+      },
+      {
+        "label": "Iniciar Ruleta Docker MacOS",
+        "type": "shell",
+        "command": "./docker_cleanup.sh",  
+        "group": "build",
+        "problemMatcher": []
+      },
     ]
   }
   
