@@ -19,6 +19,64 @@ app.listen(PORT, () => {
   console.log(`🟢 Servidor frontend en http://localhost:${PORT}`);
 });
 
+// Parte para la base de datos MySQL para almacenar el historial de apuestas
+const mysql = require("mysql2");
+
+// Crear la conexión a MySQL
+const connection = mysql.createConnection({
+  host: "mysql",  // Nombre del servicio de MySQL en docker-compose
+  user: "ruleta",
+  password: "password",
+  database: "ruleta",
+  port: 3306 // Puerto interno del contenedor de MySQL
+});
+
+// Conectar a la base de datos
+connection.connect((err) => {
+  if (err) {
+    console.error("❌ Error al conectar con MySQL", err);
+  } else {
+    console.log("🟢 Conectado a MySQL");
+  }
+});
+
+app.get("/api/apuestas", async (req, res) => {
+  const fecha = req.query.fecha;
+  if (!fecha) return res.status(400).json({ error: "Falta fecha" });
+
+  try {
+    const [rows] = await connection.promise().execute(`
+      SELECT usuario, numero, monto, 
+             DATE_FORMAT(fecha, '%Y-%m-%d %H:%i:%s') AS fecha
+      FROM apuestas
+      WHERE DATE(fecha) = ?
+    `, [fecha]);
+
+    res.json(rows);
+  } catch (error) {
+    console.error("❌ Error al consultar historial:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+app.get("/api/apuestas/fechas", async (req, res) => {
+  const { year, month } = req.query;
+  if (!year || !month) return res.status(400).json({ error: "Faltan parámetros" });
+
+  try {
+    const [rows] = await connection.promise().execute(`
+      SELECT DISTINCT DAY(fecha) AS dia
+      FROM apuestas
+      WHERE YEAR(fecha) = ? AND MONTH(fecha) = ?
+    `, [year, month]);
+
+    const dias = rows.map(r => r.dia);
+    res.json(dias);
+  } catch (err) {
+    res.status(500).json({ error: "Error al consultar días con apuestas" });
+  }
+});
+
 // ============================
 // Conexión MQTT y lógica central
 // ============================
@@ -129,6 +187,16 @@ client.on("message", (topic, message) => {
       // Confirmación para el usuario
       const mensaje = `${usuario}: apuesta recibida (${apuestasUsuarioLista}) - Total apostado: $${totalApostado}`;
       client.publish("ruleta/confirmacion", mensaje);
+
+      // **Insertar la apuesta en la base de datos**
+      const query = 'INSERT INTO apuestas (usuario, numero, monto) VALUES (?, ?, ?)';
+      connection.query(query, [usuario, numero, monto], (err, results) => {
+        if (err) {
+          console.error('❌ Error al insertar apuesta en la base de datos:', err);
+        } else {
+          console.log('🟢 Apuesta insertada correctamente en la base de datos, ID:', results.insertId);
+        }
+      });
 
       // console.log(`📥 ${usuario} apostó a: ${apuestasUsuarioLista} (Total: $${totalApostado})`);
     } catch (err) {

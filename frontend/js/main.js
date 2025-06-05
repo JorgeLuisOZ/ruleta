@@ -61,6 +61,7 @@ function actualizarApuestaUI() {
   apuestaTotalSpan.textContent = `$${apuestaTotal.toLocaleString()}`;
 }
 
+// Modal para mostrar si el usuario gano y cuanto gano
 function mostrarModalGanancia(montoGanado) {
     const modal = document.getElementById("modalGanancia");
     const mensaje = document.getElementById("mensajeGanancia");

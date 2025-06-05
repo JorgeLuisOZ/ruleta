@@ -13,11 +13,17 @@ RUN npm install
 # Copia el resto del código backend
 COPY backend/. .
 
-# Copia el frontend (si lo sirves desde backend)
+# Copia el script de espera 
+COPY espera-mysql.sh ./espera-mysql.sh
+
+# Da permisos de ejecución al script dentro del contenedor
+RUN chmod +x ./espera-mysql.sh
+
+# Copia el frontend 
 COPY frontend ./frontend
 
 # Expone el puerto del backend
 EXPOSE 3000
 
-# Comando por defecto: cambia según el servicio 
+# Comando por defecto 
 CMD ["node", "casino.js"]

@@ -4,33 +4,64 @@
 # 3. Un servicio "ruleta", que también depende del servicio MQTT y construye una imagen de Docker desde el directorio actual, ejecutando la aplicación de Node.js relacionada con el juego de ruleta.
 # 4. Nos guiamos de este video donde se explica en pocas palabras como crear y como ocupar un docker compose https://www.youtube.com/watch?v=CIje4oDZv0w y este mas en general https://www.youtube.com/watch?v=HUpIoF_conA&t=750s
 
+version: '3.8'
+
 services:
-  mqtt:
-    image: rrojano/mqtt  # Usamos la imagen oficial del broker MQTT.
-    container_name: broker-mqtt  # Nombre del contenedor para identificarlo.
+  
+  mysql:
+    image: mysql:5.7
+    container_name: mysql
     ports:
-      - "1883:1883"  # Puerto por defecto del MQTT.
-      - "9001:9001"  # Puerto WebSocket de MQTT para la comunicación web.
+      - "3307:3306"
     volumes:
-      - ./mqtt/mqtt.conf:/mosquitto/config/mosquitto.conf  # Configuración personalizada de Mosquitto desde el archivo local mqtt.conf.
-    restart: unless-stopped  # El contenedor se reiniciará a menos que sea detenido manualmente.
+      - ./data/mysql:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "tec_password"
+      MYSQL_DATABASE: ruleta
+      MYSQL_USER: ruleta
+      MYSQL_PASSWORD: "password"
+      TZ: America/Mexico_City
+    networks:
+      - network
+
+  mqtt:
+    image: rrojano/mqtt
+    container_name: broker-mqtt
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mqtt/mqtt.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped
+    networks:
+      - network
 
   casino:
     build:
-      context: .  # El servicio "casino" se construye a partir del Dockerfile en el directorio actual.
-    container_name: casino  # Nombre del contenedor para el servicio "casino".
+      context: .
+    container_name: casino
     depends_on:
-      - mqtt  # El servicio "casino" depende del servicio "mqtt", por lo que este debe estar disponible primero.
+      - mqtt
+      - mysql
     ports:
-      - "3000:3000"  # El puerto 3000 en el contenedor se expone al puerto 3000 del host para la aplicación del casino.
-    working_dir: /app/backend  # El directorio de trabajo donde se ejecuta el código de Node.js.
-    command: node casino.js  # El comando para iniciar la aplicación Node.js en el contenedor.
+      - "3000:3000"
+    working_dir: /app/backend
+    command: ["/bin/sh", "./espera-mysql.sh", "node", "casino.js"]
+    networks:
+      - network
 
   ruleta:
     build:
-      context: .  # El servicio "ruleta" se construye a partir del Dockerfile en el directorio actual.
-    container_name: ruleta  # Nombre del contenedor para el servicio "ruleta".
+      context: .
+    container_name: ruleta
     depends_on:
-      - mqtt  # El servicio "ruleta" depende del servicio "mqtt".
-    working_dir: /app/backend  # El directorio de trabajo donde se ejecuta el código de Node.js.
-    command: node ruleta.js  # El comando para iniciar la aplicación Node.js relacionada con la ruleta.
+      - mqtt
+      - mysql
+    working_dir: /app/backend
+    command: ["/bin/sh", "./espera-mysql.sh", "node", "ruleta.js"]
+    networks:
+      - network
+
+networks:
+  network:
+    driver: bridge

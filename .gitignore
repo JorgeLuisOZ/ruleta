@@ -1,0 +1,3 @@
+# Ignorar datos y sockets de MySQL
+data/mysql/
+!data/mysql/.gitkeep
