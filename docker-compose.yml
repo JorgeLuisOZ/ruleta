@@ -13,14 +13,15 @@ services:
     container_name: mysql
     ports:
       - "3307:3306"
-    volumes:
-      - ./data/mysql:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: "tec_password"
       MYSQL_DATABASE: ruleta
       MYSQL_USER: ruleta
       MYSQL_PASSWORD: "password"
       TZ: America/Mexico_City
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - network
 

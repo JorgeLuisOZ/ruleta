@@ -459,50 +459,6 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log(`📦 Apuesta total duplicada: $${apuestaDuplicada}`);
   });
 
-  document.querySelector(".boton-control.repetir").addEventListener("click", () => {
-    if (!puedeApostar) {
-      alert("⛔ No se puede apostar en este momento.");
-      return;
-    }
-
-    if (historialApuestas.length === 0) {
-      alert("⛔ No hay apuestas previas para repetir.");
-      return;
-    }
-
-    // Repetir la última apuesta
-    const ultimaApuesta = historialApuestas[historialApuestas.length - 1];
-    const { celda, monto, numero } = ultimaApuesta;
-
-    if (fichaSeleccionada > saldo) {
-      alert("Saldo insuficiente para repetir la apuesta.");
-      return;
-    }
-
-    // Guardar en historial nuevamente
-    historialApuestas.push({ celda, monto, numero });
-
-    saldo -= monto;
-    apuestaTotal += monto;
-    actualizarSaldoUI();
-    actualizarApuestaUI();
-
-    // Mostrar ficha visual acumulada
-    let fichaVisual = Array.from(celda.children).find(child =>
-      child.classList.contains("ficha-apuesta")
-    );
-
-    if (fichaVisual) {
-      const actual = parseInt(fichaVisual.textContent.replace('$', ''));
-      fichaVisual.textContent = `$${actual + monto}`;
-    } else {
-      fichaVisual = document.createElement("div");
-      fichaVisual.classList.add("ficha-apuesta");
-      fichaVisual.textContent = `$${monto}`;
-      celda.appendChild(fichaVisual);
-    }
-  });
-
   // Enviar mensaje
   document.querySelector(".chat-input button").addEventListener("click", enviarMensaje);
   mensajeInput.addEventListener("keydown", e => {
