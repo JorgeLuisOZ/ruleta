@@ -1,0 +1,158 @@
+/* Reset básico */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+body {
+  background: radial-gradient(circle at center, #1a1a1a, #000000);
+  color: #fff;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+.login-container {
+  background: linear-gradient(135deg, #4b1c1c, #220000);
+  padding: 60px 70px; /* Más grande */
+  border-radius: 20px;
+  box-shadow: 0 0 35px #ff1e1e;
+  width: 700px; /* Más ancho para que quepa Ruleta en una sola línea */
+  text-align: center;
+  position: relative;
+}
+h1 {
+  font-family: 'Georgia', serif;
+  font-size: 4rem; /* Texto más grande */
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  user-select: none;
+  margin-bottom: 20px;
+  animation: shine 3s infinite ease-in-out;
+  line-height: 1.2;
+  display: inline-block;
+}
+h1 span {
+  display: inline-block;
+  padding: 8px 14px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 5px #222;
+  border-radius: 6px;
+  margin: 0 3px;
+  font-family: 'Georgia', serif;
+}
+h1 span:nth-child(odd) {
+  background-color: #000000; /* negro */
+  color: white;
+  box-shadow: inset 0 0 10px #111;
+}
+h1 span:nth-child(even) {
+  background-color: #b20000; /* rojo */
+  color: white;
+  box-shadow: inset 0 0 10px #600000;
+}
+/* Esto fuerza el salto de línea entre RULETA y CASINO */
+h1 br {
+  content: "";
+  display: block;
+  margin-bottom: 12px;
+}
+
+/* Centrar texto dentro del input */
+input[type="text"] {
+  width: 100%;
+  padding: 18px 20px; /* Más grande */
+  margin-bottom: 30px;
+  border: none;
+  border-radius: 10px;
+  background: #330000;
+  color: #fff;
+  font-size: 1.8rem; /* Más grande */
+  box-shadow: inset 0 0 10px #aa0000;
+  transition: background 0.3s ease;
+  text-align: center;
+}
+input[type="text"]:focus {
+  background: #440000;
+  outline: none;
+  box-shadow: 0 0 18px #ff3b3b;
+}
+label {
+  display: block;
+  margin-bottom: 15px;
+  font-weight: bold;
+  font-size: 1.5rem; /* Más grande */
+  color: #f5a623;
+  text-shadow: 0 0 8px #f5a623;
+  user-select: none;
+}
+button {
+  background: #1e9606;
+  border: none;
+  padding: 18px 0;
+  width: 100%;
+  border-radius: 15px;
+  color: #fff;
+  font-size: 1.8rem; /* Más grande */
+  cursor: pointer;
+  font-weight: bold;
+  letter-spacing: 3px;
+  box-shadow: 0 0 30px #017033;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+button:hover {
+  background: #158637;
+  box-shadow: 0 0 40px #047c2c;
+}
+
+/* Animación brillo neón en el título */
+@keyframes shine {
+  0% {
+    text-shadow:
+      0 0 8px #ff0000,
+      0 0 15px #ff0000,
+      0 0 30px #ff0000,
+      0 0 60px #ff0000,
+      0 0 100px #ff0000;
+  }
+  50% {
+    text-shadow:
+      0 0 15px #ff5555,
+      0 0 30px #ff5555,
+      0 0 45px #ff5555,
+      0 0 90px #ff5555,
+      0 0 150px #ff5555;
+  }
+  100% {
+    text-shadow:
+      0 0 8px #ff0000,
+      0 0 15px #ff0000,
+      0 0 30px #ff0000,
+      0 0 60px #ff0000,
+      0 0 100px #ff0000;
+  }
+}
+
+.btn-secundario {
+margin-top: 15px;
+background: #004e92;
+padding: 14px 0;
+width: 100%;
+border-radius: 15px;
+color: #fff;
+font-size: 1.5rem;
+cursor: pointer;
+font-weight: bold;
+letter-spacing: 2px;
+box-shadow: 0 0 20px #005caa;
+transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.btn-secundario:hover {
+  background: #0074cc;
+  box-shadow: 0 0 30px #0088ff;
+}

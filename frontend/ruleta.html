@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ruleta Casino MQTT</title>
+  <link rel="stylesheet" href="css/ruleta.css">
+  <link rel="icon" type="image/x-icon" href="img/ruleta.ico">
+</head>
+<body>
+
+  <!-- 🔝 Barra superior -->
+  <div class="top-bar">
+    <div class="izquierda">
+      <span>💰 Saldo: <span id="saldo">$5,000.00</span></span>
+      <span>🎯 Apuesta total: <span id="apuesta">$0.00</span></span>
+    </div>
+    <div class="derecha">
+      👤 Usuario: <span id="usuario">Alex</span>
+    </div>
+  </div>
+
+  <!-- 🎯 Zona central -->
+  <div class="mesa-container">
+    <!-- 🎡 Ruleta -->
+    <div class="ruleta">
+      <div id="ruleta" class="ruleta-circulo"></div>
+      <img src="img/ruleta-centro.png" class="ruleta-centro" alt="Centro ruleta">
+      <div class="orbita-bola" id="orbita-bola">
+        <div class="bola" id="bola"></div>
+      </div>
+    </div>
+
+    <div class="mesa-derecha">
+      <!-- Mensaje arriba de la tabla -->
+      <div id="mensaje-superior">⏳ Esperando apuestas de los jugadores...</div>
+      <!-- 📋 Mesa de apuestas -->
+      <div class="tabla-apuestas">
+        <div class="columna-cero">
+          <div class="celda verde largo">0</div>
+        </div>
+        <div class="numeros">
+          <div class="fila">
+            <div class="celda rojo">3</div><div class="celda negro">6</div><div class="celda rojo">9</div>
+            <div class="celda rojo">12</div><div class="celda negro">15</div><div class="celda rojo">18</div>
+            <div class="celda rojo">21</div><div class="celda negro">24</div><div class="celda rojo">27</div>
+            <div class="celda rojo">30</div><div class="celda negro">33</div><div class="celda rojo">36</div>
+            <div class="celda apuesta fila uno">2to1</div>
+          </div>
+          <div class="fila">
+            <div class="celda negro">2</div><div class="celda rojo">5</div><div class="celda negro">8</div>
+            <div class="celda negro">11</div><div class="celda rojo">14</div><div class="celda negro">17</div>
+            <div class="celda negro">20</div><div class="celda rojo">23</div><div class="celda negro">26</div>
+            <div class="celda negro">29</div><div class="celda rojo">32</div><div class="celda negro">35</div>
+            <div class="celda apuesta fila dos">2to1</div>
+          </div>
+          <div class="fila">
+            <div class="celda rojo">1</div><div class="celda negro">4</div><div class="celda rojo">7</div>
+            <div class="celda negro">10</div><div class="celda negro">13</div><div class="celda rojo">16</div>
+            <div class="celda rojo">19</div><div class="celda negro">22</div><div class="celda rojo">25</div>
+            <div class="celda negro">28</div><div class="celda negro">31</div><div class="celda rojo">34</div>
+            <div class="celda apuesta fila tres">2to1</div>
+          </div>
+          <div class="fila">
+            <div class="celda apuesta doble">1–18</div>
+            <div class="celda apuesta doble">Par</div>
+            <div class="celda apuesta doble rojo"></div>
+            <div class="celda apuesta doble negro"></div>
+            <div class="celda apuesta doble">Impar</div>
+            <div class="celda apuesta doble">19–36</div>
+          </div>
+        </div>
+      </div>
+      <!-- Mensaje abajo de la tabla (confirmaciones)-->
+      <div id="mensaje-confirmaciones">⏳ Esperando apuestas de los jugadores...</div>
+    </div>
+    
+  </div>
+
+  <!-- 🔻 Zona inferior -->
+  <div class="bottom-bar">
+    <div class="fichas">
+      <div class="ficha ficha1"></div>
+      <div class="ficha ficha5"></div>
+      <div class="ficha ficha20"></div>
+      <div class="ficha ficha50"></div>
+      <div class="ficha ficha100"></div>
+      <div class="ficha ficha500"></div>
+      <div class="ficha ficha1k"></div>
+
+      <!-- 🔁 Nuevos botones -->
+      <div class="botones-control">
+        <button class="boton-control regresar">↩</button>
+        <button class="boton-control doblar">2X</button>
+      </div>
+    </div>
+
+    <!-- 💬 Chat -->
+    <div class="chat-box">
+      <h4>💬 Chat en vivo</h4>
+      <div class="mensajes" id="mensajes">
+        <div class="mensaje">[MQTT] ¡Bienvenidos a la ruleta mqtt!</div>
+      </div>
+      <div class="chat-input">
+        <input type="text" placeholder="Escribe tu mensaje..." />
+        <button>Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🎉 Modal de Ganancia -->
+  <div id="modalGanancia" class="modal oculto">
+    <div class="modal-contenido">
+      <div class="emoji">🎉</div>
+      <div id="mensajeGanancia" class="mensaje"></div>
+      <button onclick="ocultarModalGanancia()">Aceptar</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js" type="text/javascript"></script>
+
+  <script src="js/main.js"></script>
+
+</body>
+</html>

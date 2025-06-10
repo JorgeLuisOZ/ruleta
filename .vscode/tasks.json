@@ -1,0 +1,20 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Iniciar Ruleta Docker Windows",
+        "type": "shell",
+        "command": ".\\iniciar-ruleta.bat",
+        "group": "build",
+        "problemMatcher": []
+      },
+      {
+        "label": "Iniciar Ruleta Docker MacOS",
+        "type": "shell",
+        "command": "./iniciar-ruleta.sh",  // Darle permisos en la terminal para los de Mac ---> chmod +x iniciar-ruleta.sh
+        "group": "build",
+        "problemMatcher": []
+      },
+    ]
+  }
+  

@@ -1,0 +1,68 @@
+# Este archivo docker-compose.yml define tres servicios:
+# 1. Un servicio MQTT, configurando un broker MQTT (rrojano/mqtt) que se usará para la comunicación de mensajes entre los contenedores.
+# 2. Un servicio "casino", que depende del servicio MQTT. Este servicio construye una imagen de Docker desde el directorio actual y ejecuta la aplicación de Node.js.
+# 3. Un servicio "ruleta", que también depende del servicio MQTT y construye una imagen de Docker desde el directorio actual, ejecutando la aplicación de Node.js relacionada con el juego de ruleta.
+# 4. Nos guiamos de este video donde se explica en pocas palabras como crear y como ocupar un docker compose https://www.youtube.com/watch?v=CIje4oDZv0w y este mas en general https://www.youtube.com/watch?v=HUpIoF_conA&t=750s
+
+version: '3.8'
+
+services:
+  
+  mysql:
+    image: mysql:5.7
+    container_name: mysql
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "tec_password"
+      MYSQL_DATABASE: ruleta
+      MYSQL_USER: ruleta
+      MYSQL_PASSWORD: "password"
+      TZ: America/Mexico_City
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - network
+
+  mqtt:
+    image: rrojano/mqtt
+    container_name: broker-mqtt
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mqtt/mqtt.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped
+    networks:
+      - network
+
+  casino:
+    build:
+      context: .
+    container_name: casino
+    depends_on:
+      - mqtt
+      - mysql
+    ports:
+      - "3000:3000"
+    working_dir: /app/backend
+    command: ["/bin/sh", "./espera-mysql.sh", "node", "casino.js"]
+    networks:
+      - network
+
+  ruleta:
+    build:
+      context: .
+    container_name: ruleta
+    depends_on:
+      - mqtt
+      - mysql
+    working_dir: /app/backend
+    command: ["/bin/sh", "./espera-mysql.sh", "node", "ruleta.js"]
+    networks:
+      - network
+
+networks:
+  network:
+    driver: bridge

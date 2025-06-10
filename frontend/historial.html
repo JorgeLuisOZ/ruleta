@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Historial de Apuestas</title>
+  <link rel="stylesheet" href="css/historial.css" />
+  <link rel="icon" href="img/ruleta.ico" />
+</head>
+<body>
+  <div class="calendar-container">
+    <h1>HISTORIAL DE APUESTAS</h1>
+    <div class="month-controls">
+      <button onclick="cambiarMes(-1)">&laquo;</button>
+      <div class="month-title" id="monthTitle"></div>
+      <button onclick="cambiarMes(1)">&raquo;</button>
+    </div>
+    <div class="calendar" id="calendar"></div>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <button class="close-btn" onclick="cerrarModal()">Cerrar</button>
+      <h3 id="modalFecha"></h3>
+      <div id="modalContenido">Cargando...</div>
+    </div>
+  </div>
+
+  <script src="js/historial.js"></script>
+</body>
+</html>
